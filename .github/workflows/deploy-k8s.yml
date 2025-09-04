@@ -18,7 +18,7 @@ on:
       provider:
         description: 'AI Provider(openai, google)'
         required: true
-        default: 'google'
+        default: 'openai'
         type: choice
         options: [google, openai]
       run_security_scan:
@@ -272,21 +272,68 @@ jobs:
           severity: 'CRITICAL,HIGH'
           github-pat: ${{ secrets.GH_PAT }}
 
-      - name: Install Metrics Server (with LimitRange fix)
+      - name: Install Metrics Server (safe LimitRange + admission check)
         run: |
           set -euo pipefail
 
-          # Delete old LimitRanges, create sane defaults, verify admission with test pod, then install metrics-server
+          # remove any existing LimitRanges that might block admission
           kubectl -n kube-system get limitrange -o name | xargs -r kubectl -n kube-system delete || true && \
-          kubectl -n kube-system create limitrange kube-system-defaults \
-            --dry-run=client -o json \
-            --limits='{"type":"Container","defaultRequest":{"cpu":"100m","memory":"200Mi"},"default":{"cpu":"200m","memory":"256Mi"}}' \
-            | kubectl apply -f - && \
-          kubectl -n kube-system run metrics-admit-test --image=k8s.gcr.io/pause:3.9 --restart=Never \
-            --requests=cpu=100m,memory=200Mi --limits=cpu=200m,memory=256Mi && \
-          kubectl -n kube-system wait --for=condition=PodScheduled pod/metrics-admit-test --timeout=30s && \
+
+          # create a sane LimitRange (inline YAML, idempotent)
+          kubectl -n kube-system apply -f - <<'LR' && \
+          apiVersion: v1
+          kind: LimitRange
+          metadata:
+            name: kube-system-defaults
+            namespace: kube-system
+          spec:
+            limits:
+            - type: Container
+              defaultRequest:
+                cpu: "100m"
+                memory: "200Mi"
+              default:
+                cpu: "200m"
+                memory: "256Mi"
+          LR && \
+
+          # wait for the LimitRange to be present (avoid races)
+          for i in {1..30}; do
+            if kubectl -n kube-system get limitrange kube-system-defaults >/dev/null 2>&1; then
+              echo "LimitRange in place"; break
+            fi
+            echo "Waiting for LimitRange... ($i/30)"; sleep 1
+          done && \
+
+          # create a short-lived test pod with same resources as metrics-server to validate admission
+          kubectl -n kube-system apply -f - <<'POD' && \
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: metrics-admit-test
+            namespace: kube-system
+          spec:
+            restartPolicy: Never
+            containers:
+              - name: pause
+                image: k8s.gcr.io/pause:3.9
+                resources:
+                  requests:
+                    cpu: "100m"
+                    memory: "200Mi"
+                  limits:
+                    cpu: "200m"
+                    memory: "256Mi"
+          POD && \
+
+          # wait until the test pod is accepted & scheduled (admission ok)
+          kubectl -n kube-system wait --for=condition=PodScheduled pod/metrics-admit-test --timeout=60s && \
           kubectl -n kube-system delete pod metrics-admit-test --ignore-not-found=true && \
+
+          # now safe to apply upstream metrics-server manifest
           kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml && \
+
+          # wait for metrics-server rollout
           kubectl -n kube-system rollout status deploy/metrics-server --timeout=300s
 
       - name: Export replicas and HPA settings from TFVARS
