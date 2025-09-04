@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: metrics-server-defaults
+  namespace: kube-system
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: 200m
+      memory: 256Mi
+    defaultRequest:
+      cpu: 100m
+      memory: 200Mi

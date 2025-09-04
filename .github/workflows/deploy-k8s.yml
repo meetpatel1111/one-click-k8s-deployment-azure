@@ -272,24 +272,20 @@ jobs:
           severity: 'CRITICAL,HIGH'
           github-pat: ${{ secrets.GH_PAT }}
 
-      - name: Install Metrics Server
+      - name: Install Metrics Server (pinned + override)
         run: |
           set -euo pipefail
-          # Apply upstream manifest
+
+          # (Optional) ensure kube-system defaults won't cap below our requests
+          kubectl apply -f k8s/kube-system-limitrange.yaml || true
+
+          # Apply upstream (pin if you want reproducibility)
           kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
-          # Fix resources (so requests don’t exceed namespace defaults)
-          kubectl -n kube-system set resources deploy/metrics-server \
-            --containers=metrics-server \
-            --limits=cpu=200m,memory=256Mi \
-            --requests=cpu=100m,memory=200Mi
+          # Apply your permanent override (adds limits >= requests)
+          kubectl apply -f k8s/metrics-server-override.yaml
 
-          # Add AKS-friendly flag (idempotent patch)
-          kubectl -n kube-system patch deployment metrics-server --type='json' -p='[
-            {"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-preferred-address-types=InternalIP"}
-          ]' || true
-
-          # Wait for rollout to complete
+          # Wait for rollout
           kubectl -n kube-system rollout status deploy/metrics-server --timeout=300s
 
       - name: Export replicas and HPA settings from TFVARS
