@@ -229,7 +229,7 @@ jobs:
 
       - name: Build & Push Node.js App Image (ACR)
         run: |
-          TAG="${{ env.ENVIRONMENT }}"       
+          TAG="${{ github.event.inputs.environment }}"       
           NODEJS_IMAGE="${ACR_SERVER}/nodejs-app:${TAG}"
           echo "NODEJS_IMAGE=$NODEJS_IMAGE" >> $GITHUB_ENV
           cd apps/nodejs-app
@@ -246,7 +246,7 @@ jobs:
 
       - name: Build & Push Retro Arcade Galaxy App Image (ACR)
         run: |
-          TAG="${{ env.ENVIRONMENT }}" 
+          TAG="${{ github.event.inputs.environment }}"
           RETRO_ARCADE_IMAGE="${ACR_SERVER}/retro-arcade-galaxy:${TAG}"
           echo "RETRO_ARCADE_IMAGE=$RETRO_ARCADE_IMAGE" >> $GITHUB_ENV
           git clone https://github.com/meetpatel1111/retro-arcade-galaxy.git
