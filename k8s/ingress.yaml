@@ -1,0 +1,53 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # send only the captured remainder to backends
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          # NodeJS: /nodejs -> /
+          #         /nodejs/foo -> /foo
+          - path: /nodejs/?(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: nodejs-service
+                port:
+                  number: 3000
+
+          # NGINX: /nginx -> /
+          #        /nginx/foo -> /foo
+          - path: /nginx/?(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
+
+          # k8sgpt metrics: /k8sgpt/metrics -> /metrics
+          #                 /k8sgpt/metrics/foo -> /metrics/foo
+          - path: /k8sgpt/(metrics.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: k8sgpt-service
+                port:
+                  number: 8081
+
+          # k8sgpt API: /k8sgpt -> /
+          #             /k8sgpt/foo -> /foo
+          - path: /k8sgpt/?(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: k8sgpt-service
+                port:
+                  number: 80

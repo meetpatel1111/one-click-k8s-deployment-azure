@@ -1,0 +1,370 @@
+name: One-Click K8s Deployment (Azure)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy (dev, test)'
+        required: true
+        default: 'dev'
+        type: choice
+        options: [dev, test]
+      action:
+        description: 'Terraform action (apply, destroy, refresh)'
+        required: true
+        default: 'apply'
+        type: choice
+        options: [apply, destroy, refresh]
+      provider:
+        description: 'AI Provider(openai, google)'
+        required: true
+        default: 'google'
+        type: choice
+        options: [google, openai]
+      run_security_scan:
+        description: 'Run security scans only?'
+        required: false
+        default: false
+        type: boolean
+      run_terraform:
+        description: 'Run Terraform deploy?'
+        required: false
+        default: false
+        type: boolean
+      run_application_deployment:
+        description: 'Run Application deployment?'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  TF_DIR: terraform
+  # Shared backend (same RG/SA/container for all envs)
+  BACKEND_RG: tfstate-shared-rg
+  BACKEND_SA: sttfstateshared
+  BACKEND_CONTAINER: tfstate
+
+jobs:
+  security-scan:
+    if: ${{ github.event.inputs.run_security_scan == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      - name: Run tfsec (IaC)
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: ${{ env.TF_DIR }}
+          format: csv
+          soft_fail: true
+          github_token: ${{ secrets.GH_PAT }}
+
+      - name: Run Trivy scan on nginx
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: nginx:latest
+          format: table
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+          github-pat: ${{ secrets.GH_PAT }}
+
+      - name: Run Trivy scan on k8sgpt
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ghcr.io/k8sgpt-ai/k8sgpt:latest
+          format: table
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+          github-pat: ${{ secrets.GH_PAT }}
+
+  terraform-k8s:
+    if: ${{ github.event.inputs.run_terraform == 'true' }}
+    needs: security-scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Set ENV
+        run: |
+          echo "ENVIRONMENT=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+          echo "TFVARS_FILE=${{ github.event.inputs.environment }}.tfvars" >> $GITHUB_ENV
+
+      - name: Pre-bootstrap Terraform backend
+        run: |
+          ./terraform/bootstrap/prebootstrap.sh \
+            "${BACKEND_RG}" \
+            "${BACKEND_SA}" \
+            "${BACKEND_CONTAINER}" \
+            "eastus"
+
+      - name: Terraform Init (Remote azurerm Backend - shared SA)
+        run: |
+          set -euo pipefail
+          cd "${TF_DIR}"
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
+          RG_NAME="${BACKEND_RG}"
+          SA_NAME="${BACKEND_SA}"
+          CONTAINER_NAME="${BACKEND_CONTAINER}"
+          KEY_PATH="aks/${ENVIRONMENT}.tfstate"
+
+          terraform init -input=false -reconfigure \
+            -backend-config="resource_group_name=${RG_NAME}" \
+            -backend-config="storage_account_name=${SA_NAME}" \
+            -backend-config="container_name=${CONTAINER_NAME}" \
+            -backend-config="key=${KEY_PATH}"
+
+      - name: Terraform Fmt
+        run: |
+          cd "${TF_DIR}"
+          terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: |
+          cd "${TF_DIR}"
+          terraform validate
+
+      - name: Execute Terraform
+        run: |
+          cd "${TF_DIR}"
+          ACTION="${{ github.event.inputs.action }}"
+          case "$ACTION" in
+            apply)
+              terraform plan -var-file="$TFVARS_FILE" -out=tfplan
+              terraform apply -auto-approve tfplan
+              ;;
+            destroy)
+              terraform plan -destroy -var-file="$TFVARS_FILE" -out=tfplan-destroy
+              terraform apply -auto-approve tfplan-destroy
+              ;;
+            refresh)
+              terraform refresh -var-file="$TFVARS_FILE"
+              ;;
+            *)
+              echo "Unknown action: $ACTION"
+              exit 1
+              ;;
+          esac
+
+  kubernetes-deploy:
+    if: ${{ github.event.inputs.run_application_deployment == 'true' }}
+    runs-on: ubuntu-latest
+    needs: terraform-k8s
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Verify kubectl version
+        run: kubectl version --client
+
+      # ---------- ACR login & build/push ----------
+      - name: Fetch ACR outputs & login
+        run: |
+          ACR_NAME=$(terraform -chdir="${TF_DIR}" output -raw acr_name)
+          ACR_SERVER=$(terraform -chdir="${TF_DIR}" output -raw acr_login_server)
+          echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
+          echo "ACR_SERVER=$ACR_SERVER" >> $GITHUB_ENV
+          az acr login --name "$ACR_NAME"
+
+      - name: Build & Push Node.js App Image (ACR)
+        run: |
+          NODEJS_IMAGE="${ACR_SERVER}/nodejs-app:${{ github.sha }}"
+          echo "NODEJS_IMAGE=$NODEJS_IMAGE" >> $GITHUB_ENV
+          cd apps/nodejs-app
+          docker build --no-cache -t "$NODEJS_IMAGE" .
+          docker push "$NODEJS_IMAGE"
+
+      # - name: Build & Push mini-budget-tracker App Image (ACR)
+      #   run: |
+      #     MINI_IMAGE="${ACR_SERVER}/mini-budget-tracker:${{ github.sha }}"
+      #     echo "MINI_IMAGE=$MINI_IMAGE" >> $GITHUB_ENV
+      #     cd apps/mini-budget-tracker
+      #     docker build --no-cache -t "$MINI_IMAGE" .
+      #     docker push "$MINI_IMAGE"
+
+      - name: Build & Push Retro Arcade Galaxy App Image (ACR)
+        run: |
+          RETRO_ARCADE_IMAGE="${ACR_SERVER}/retro-arcade-galaxy:${{ github.sha }}"
+          echo "RETRO_ARCADE_IMAGE=$RETRO_ARCADE_IMAGE" >> $GITHUB_ENV
+          git clone https://github.com/meetpatel1111/retro-arcade-galaxy.git
+          cd retro-arcade-galaxy
+          docker build --no-cache -t "$RETRO_ARCADE_IMAGE" .
+          docker push "$RETRO_ARCADE_IMAGE"
+
+      - name: Run Trivy scan on nodejs-app
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.NODEJS_IMAGE }}
+          format: table
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+          github-pat: ${{ secrets.GH_PAT }}
+
+      - name: Run Trivy scan on Retro Arcade Galaxy Web App
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.RETRO_ARCADE_IMAGE }}
+          format: table
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+          github-pat: ${{ secrets.GH_PAT }}
+
+      # ---------- read TF outputs & get kubeconfig ----------
+      - name: Terraform Init (for reading outputs) — shared backend
+        run: |
+          cd "${TF_DIR}"
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
+          RG_NAME="${BACKEND_RG}"
+          SA_NAME="${BACKEND_SA}"
+          CONTAINER_NAME="${BACKEND_CONTAINER}"
+          KEY_PATH="aks/${ENVIRONMENT}.tfstate"
+
+          terraform init -input=false -reconfigure \
+            -backend-config="resource_group_name=${RG_NAME}" \
+            -backend-config="storage_account_name=${SA_NAME}" \
+            -backend-config="container_name=${CONTAINER_NAME}" \
+            -backend-config="key=${KEY_PATH}"
+
+      - name: Get AKS kubeconfig
+        run: |
+          RG_NAME=$(terraform -chdir="${TF_DIR}" output -raw resource_group_name)
+          CLUSTER_NAME=$(terraform -chdir="${TF_DIR}" output -raw cluster_name)
+          az aks get-credentials -g "$RG_NAME" -n "$CLUSTER_NAME" --overwrite-existing
+
+      - name: Install Metrics Server
+        run: |
+          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+          kubectl wait --for=condition=available deployment metrics-server -n kube-system --timeout=300s
+
+      - name: Export replicas and HPA settings from TFVARS
+        run: |
+          ENVFILE="${TF_DIR}/${TFVARS_FILE}"
+          export NGINX_REPLICAS=$(grep nginx_replicas "$ENVFILE" | awk -F'=' '{print $2}' | xargs)
+          export NODEJS_REPLICAS=$(grep nodejs_replicas "$ENVFILE" | awk -F'=' '{print $2}' | xargs)
+          export K8SGPT_REPLICAS=$(grep k8sgpt_replicas "$ENVFILE" | awk -F'=' '{print $2}' | xargs)
+          export RETRO_ARCADE_GALAXY_REPLICAS=$(grep retro_arcade_galaxy_replicas "$ENVFILE" | awk -F'=' '{print $2}' | xargs)
+
+          export NGINX_HPA_MIN=$NGINX_REPLICAS
+          export NGINX_HPA_MAX=$(grep nginx_hpa_max "$ENVFILE" | awk -F'=' '{print $2}' | xargs)
+          export NODEJS_HPA_MIN=$NODEJS_REPLICAS
+          export NODEJS_HPA_MAX=$(grep nodejs_hpa_max "$ENVFILE" | awk -F'=' '{print $2}' | xargs)
+          export MINI_BUDGET_HPA_MIN=$(grep mini_budget_tracker_replicas "$ENVFILE" | awk -F'=' '{print $2}' | xargs)
+          export MINI_BUDGET_HPA_MAX=$(grep mini_budget_tracker_hpa_max "$ENVFILE" | awk -F'=' '{print $2}' | xargs)
+          export K8SGPT_HPA_MIN=$K8SGPT_REPLICAS
+          export K8SGPT_HPA_MAX=$(grep k8sgpt_hpa_max "$ENVFILE" | awk -F'=' '{print $2}' | xargs)
+          export RETRO_ARCADE_GALAXY_HPA_MIN=$RETRO_ARCADE_GALAXY_REPLICAS
+          export RETRO_ARCADE_GALAXY_HPA_MAX=$(grep retro_arcade_galaxy_hpa_max "$ENVFILE" | awk -F'=' '{print $2}' | xargs)
+
+          echo "NGINX_REPLICAS=$NGINX_REPLICAS" >> $GITHUB_ENV
+          echo "NODEJS_REPLICAS=$NODEJS_REPLICAS" >> $GITHUB_ENV
+          echo "K8SGPT_REPLICAS=$K8SGPT_REPLICAS" >> $GITHUB_ENV
+          echo "RETRO_ARCADE_GALAXY_REPLICAS=$RETRO_ARCADE_GALAXY_REPLICAS" >> $GITHUB_ENV
+          echo "NGINX_HPA_MIN=$NGINX_HPA_MIN" >> $GITHUB_ENV
+          echo "NGINX_HPA_MAX=$NGINX_HPA_MAX" >> $GITHUB_ENV
+          echo "NODEJS_HPA_MIN=$NODEJS_HPA_MIN" >> $GITHUB_ENV
+          echo "NODEJS_HPA_MAX=$NODEJS_HPA_MAX" >> $GITHUB_ENV
+          echo "MINI_BUDGET_HPA_MIN=$MINI_BUDGET_HPA_MIN" >> $GITHUB_ENV
+          echo "MINI_BUDGET_HPA_MAX=$MINI_BUDGET_HPA_MAX" >> $GITHUB_ENV
+          echo "K8SGPT_HPA_MIN=$K8SGPT_HPA_MIN" >> $GITHUB_ENV
+          echo "K8SGPT_HPA_MAX=$K8SGPT_HPA_MAX" >> $GITHUB_ENV
+          echo "RETRO_ARCADE_GALAXY_HPA_MIN=$RETRO_ARCADE_GALAXY_HPA_MIN" >> $GITHUB_ENV
+          echo "RETRO_ARCADE_GALAXY_HPA_MAX=$RETRO_ARCADE_GALAXY_HPA_MAX" >> $GITHUB_ENV
+
+      - name: Create Kubernetes Secret from GitHub Secret (OpenAI)
+        if: ${{ github.event.inputs.provider == 'openai' }}
+        run: |
+          kubectl create secret generic k8sgpt-secret \
+            --from-literal=OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create Kubernetes Secret from GitHub Secret (Google)
+        if: ${{ github.event.inputs.provider == 'google' }}
+        run: |
+          kubectl create secret generic k8sgpt-secret \
+            --from-literal=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create Secret for Retro Arcade Galaxy
+        run: |
+          kubectl create secret generic retro-arcade-secret \
+            --from-literal=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply Kubernetes Deployments & Services (Azure)
+        run: |
+          kubectl apply -f https://github.com/kubernetes/ingress-nginx/controller-v1.13.0/deploy/static/provider/cloud/deploy.yaml
+          kubectl wait --namespace ingress-nginx \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/component=controller \
+            --timeout=300s
+
+          PROVIDER="${{ github.event.inputs.provider }}"
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
+
+          cp k8s/nginx.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/nginx.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/nginx.yaml
+          cp k8s/nodejs-app.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/nodejs-app.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/nodejs-app.yaml
+          cp k8s/k8sgpt-"${PROVIDER}".yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/k8sgpt-"${PROVIDER}".yaml && rm k8s/temp.yaml && kubectl apply -f k8s/k8sgpt-"${PROVIDER}".yaml
+          cp k8s/k8sgpt-setup.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/k8sgpt-setup.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/k8sgpt-setup.yaml
+          cp k8s/ingress.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/ingress.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/ingress.yaml
+          cp k8s/retro-arcade-galaxy.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/retro-arcade-galaxy.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/retro-arcade-galaxy.yaml
+          cp k8s/arcade-ingress.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/arcade-ingress.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/arcade-ingress.yaml
+
+          echo "Waiting for Ingress endpoint..."
+          INGRESS_NAME="main-ingress"
+          NAMESPACE="default"
+          for i in {1..30}; do
+            EXTERNAL_IP=$(kubectl -n "$NAMESPACE" get ingress "$INGRESS_NAME" -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            if [ -z "$EXTERNAL_IP" ]; then
+              EXTERNAL_IP=$(kubectl -n "$NAMESPACE" get ingress "$INGRESS_NAME" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            fi
+            if [ -n "$EXTERNAL_IP" ]; then
+              echo "Ingress ready: http://$EXTERNAL_IP"
+              break
+            fi
+            echo "Waiting 10s..."
+            sleep 10
+          done
+
+          if [ -z "$EXTERNAL_IP" ]; then
+            echo "Ingress endpoint not ready yet. Check with: kubectl get ingress $INGRESS_NAME -n $NAMESPACE -o wide"
+          fi
+
+      - name: Verify Kubernetes Deployments & Services
+        run: |
+          kubectl get nodes -o wide
+          kubectl get deployments -A
+          kubectl get svc -A
+          kubectl get ingress -A
+          kubectl get hpa -A

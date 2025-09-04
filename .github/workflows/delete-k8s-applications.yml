@@ -1,0 +1,166 @@
+name: Delete Kubernetes Applications (AKS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to target (dev, test)'
+        required: true
+        default: 'dev'
+        type: choice
+        options: [dev, test]
+      dry_run:
+        description: 'Perform a dry run (no actual deletion)'
+        required: false
+        default: true
+        type: boolean
+      apps_to_delete:
+        description: 'Comma-separated list of apps to delete (nodejs-app, nginx, k8sgpt-openai, k8sgpt-google, mini-budget-tracker, retro-arcade-galaxy, arcade-ingress, ingress)'
+        required: false
+        default: 'nodejs-app,nginx,k8sgpt-openai,k8sgpt-google'
+      confirm:
+        description: 'Confirm deletion (must be true to actually delete)'
+        required: true
+        default: false
+        type: boolean
+
+env:
+  TF_DIR: terraform
+  # Shared backend settings (same for all environments)
+  BACKEND_RG: tfstate-shared-rg        # <-- update to your existing RG
+  BACKEND_SA: sttfstateshared          # <-- fixed shared Storage Account name
+  BACKEND_CONTAINER: tfstate           # <-- existing container in that SA
+
+jobs:
+  delete-k8s-apps:
+    if: ${{ github.event.inputs.confirm == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+    
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Terraform Init (Remote azurerm Backend - shared SA)
+        run: |
+          set -euo pipefail
+          cd "${TF_DIR}"
+
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
+          RG_NAME="${BACKEND_RG}"
+          SA_NAME="${BACKEND_SA}"
+          CONTAINER_NAME="${BACKEND_CONTAINER}"
+          KEY_PATH="aks/${ENVIRONMENT}.tfstate"
+
+          echo "Using shared backend: RG=$RG_NAME SA=$SA_NAME Container=$CONTAINER_NAME Key=$KEY_PATH"
+
+          terraform init -input=false -reconfigure \
+            -backend-config="resource_group_name=${RG_NAME}" \
+            -backend-config="storage_account_name=${SA_NAME}" \
+            -backend-config="container_name=${CONTAINER_NAME}" \
+            -backend-config="key=${KEY_PATH}"
+
+      - name: Update kubeconfig (AKS)
+        run: |
+          RG_NAME=$(terraform -chdir="${TF_DIR}" output -raw resource_group_name)
+          CLUSTER_NAME=$(terraform -chdir="${TF_DIR}" output -raw cluster_name)
+          echo "Using RG=${RG_NAME}, AKS=${CLUSTER_NAME}"
+          az aks get-credentials -g "$RG_NAME" -n "$CLUSTER_NAME" --overwrite-existing
+
+      - name: Parse Apps to Delete
+        id: parse_apps
+        run: |
+          APPS_RAW="${{ github.event.inputs.apps_to_delete }}"
+          APPS_LIST=$(echo "$APPS_RAW" | tr -s ' ' | tr ',' '\n' | sed 's/^ *//;s/ *$//' | tr '\n' ',' | sed 's/,$//')
+          echo "APPS_LIST=$APPS_LIST" >> $GITHUB_ENV
+          echo "Apps to delete: $APPS_LIST"
+
+      - name: Delete Kubernetes Resources
+        run: |
+          set -e
+          DRY_RUN=${{ github.event.inputs.dry_run }}
+          for APP in $(echo "$APPS_LIST" | tr "," "\n"); do
+            case "$APP" in
+              nodejs-app)          YAML_FILE="k8s/nodejs-app.yaml" ;;
+              nginx)               YAML_FILE="k8s/nginx.yaml" ;;
+              k8sgpt-openai)       YAML_FILE="k8s/k8sgpt-openai.yaml" ;;
+              k8sgpt-google)       YAML_FILE="k8s/k8sgpt-google.yaml" ;;
+              mini-budget-tracker) YAML_FILE="k8s/mini-budget-tracker.yaml" ;;
+              retro-arcade-galaxy) YAML_FILE="k8s/retro-arcade-galaxy.yaml" ;;
+              arcade-ingress)      YAML_FILE="k8s/arcade-ingress.yaml" ;;
+              ingress)             YAML_FILE="k8s/ingress.yaml" ;;
+              *)                   YAML_FILE="k8s/${APP}.yaml" ;;
+            esac
+
+            if [[ -f "$YAML_FILE" ]]; then
+              if [[ "$DRY_RUN" == "true" ]]; then
+                echo "[DRY-RUN] kubectl delete -f $YAML_FILE --ignore-not-found"
+                kubectl delete -f "$YAML_FILE" --ignore-not-found --dry-run=client
+              else
+                echo "Deleting $APP using $YAML_FILE ..."
+                kubectl delete -f "$YAML_FILE" --ignore-not-found || echo "Error deleting $APP, continuing..."
+              fi
+            else
+              echo "YAML not found for '$APP' at $YAML_FILE"
+            fi
+          done
+
+      - name: Delete Secrets (optional)
+        run: |
+          DRY_RUN=${{ github.event.inputs.dry_run }}
+          if [[ "$DRY_RUN" == "true" ]]; then
+            echo "[DRY-RUN] kubectl delete secret k8sgpt-secret --ignore-not-found"
+            kubectl delete secret k8sgpt-secret --ignore-not-found --dry-run=client
+            echo "[DRY-RUN] kubectl delete secret retro-arcade-secret --ignore-not-found"
+            kubectl delete secret retro-arcade-secret --ignore-not-found --dry-run=client
+          else
+            echo "Deleting Secrets..."
+            kubectl delete secret k8sgpt-secret --ignore-not-found || true
+            kubectl delete secret retro-arcade-secret --ignore-not-found || true
+          fi
+
+      - name: Delete Ingress (optional, last)
+        run: |
+          DRY_RUN=${{ github.event.inputs.dry_run }}
+          if [[ "$DRY_RUN" == "true" ]]; then
+            echo "[DRY-RUN] kubectl delete -f k8s/ingress.yaml --ignore-not-found"
+            kubectl delete -f k8s/ingress.yaml --ignore-not-found --dry-run=client
+            echo "[DRY-RUN] kubectl delete -f k8s/arcade-ingress.yaml --ignore-not-found"
+            kubectl delete -f k8s/arcade-ingress.yaml --ignore-not-found --dry-run=client
+          else
+            echo "Deleting ingress resources..."
+            kubectl delete -f k8s/ingress.yaml --ignore-not-found || true
+            kubectl delete -f k8s/arcade-ingress.yaml --ignore-not-found || true
+          fi
+
+      - name: Verify Remaining Resources
+        run: |
+          echo "Remaining Deployments:" && kubectl get deployments -A || true
+          echo "Remaining Services:" && kubectl get svc -A || true
+          echo "Remaining HPA:" && kubectl get hpa -A || true
+          echo "Remaining Ingress:" && kubectl get ingress -A || true
+
+  confirm-step:
+    if: ${{ github.event.inputs.confirm != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deletion Not Confirmed
+        run: |
+          echo "Deletion not confirmed. Set 'confirm' input to true to delete Kubernetes apps."
+          exit 1

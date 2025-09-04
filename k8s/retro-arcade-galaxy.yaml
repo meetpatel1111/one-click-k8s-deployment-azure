@@ -1,0 +1,97 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retro-arcade-galaxy
+  namespace: default
+spec:
+  replicas: ${RETRO_ARCADE_GALAXY_HPA_MIN}
+  selector:
+    matchLabels:
+      app: retro-arcade-galaxy
+  template:
+    metadata:
+      labels:
+        app: retro-arcade-galaxy
+    spec:
+      containers:
+      - name: retro-arcade-galaxy
+        image: "meetpatel1111/retro-arcade-galaxy:${ENVIRONMENT}"
+        ports:
+        - containerPort: 3000
+        imagePullPolicy: Always
+        env:
+          - name: GEMINI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: retro-arcade-secret
+                key: GEMINI_API_KEY
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 3
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retro-arcade-service
+  namespace: default
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+spec:
+  selector:
+    app: retro-arcade-galaxy
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: retro-arcade-galaxy-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: retro-arcade-galaxy
+  minReplicas: ${RETRO_ARCADE_GALAXY_HPA_MIN}
+  maxReplicas: ${RETRO_ARCADE_GALAXY_HPA_MAX}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60

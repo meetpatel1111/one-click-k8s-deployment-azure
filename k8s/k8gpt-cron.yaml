@@ -1,0 +1,64 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8sgpt-cron-sa
+  namespace: default
+
+---
+# Binding for the CronJob pods
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8sgpt-read-all-binding-cron
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8sgpt-read-all
+subjects:
+  - kind: ServiceAccount
+    name: k8sgpt-cron-sa
+    namespace: default
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: k8sgpt-analyze
+  namespace: default
+spec:
+  schedule: "*/10 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: k8sgpt-cron-sa
+          restartPolicy: Never
+          containers:
+            - name: k8sgpt
+              image: ghcr.io/k8sgpt-ai/k8sgpt:latest
+              args:
+                - analyze
+                - --explain
+                - --with-doc
+                - --output=json
+                - --anonymize
+              env:
+                - name: K8SGPT_BACKEND
+                  value: openai
+                - name: K8SGPT_MODEL
+                  value: gpt-4o
+                - name: OPENAI_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: k8sgpt-secret
+                      key: OPENAI_API_KEY
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"

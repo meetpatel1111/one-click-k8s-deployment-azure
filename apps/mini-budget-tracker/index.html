@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Budget Tracker — Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <h1>💰 Budget Tracker — Dashboard</h1>
+    <div class="nav">
+      <a class="btn secondary" href="data.html">Data Table</a>
+      <select id="currencySelect" class="select">
+        <option value="₹">₹</option><option value="$">$</option><option value="€">€</option>
+      </select>
+      <button id="themeToggle" class="btn secondary">🌙</button>
+      <button id="addBtn" class="btn">➕ Add</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="cards">
+      <div class="card"><div class="label">Income</div><div class="value" id="income">₹0.00</div></div>
+      <div class="card"><div class="label">Expenses</div><div class="value" id="expenses">₹0.00</div></div>
+      <div class="card"><div class="label">Balance</div><div class="value" id="balance">₹0.00</div></div>
+      <div class="card">
+        <div class="label">Budget Goal</div>
+        <div class="value"><span id="goalLabel">Set</span></div>
+        <div class="progress-wrap"><div id="goalProgress" class="progress" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="left">
+        <button id="quickFood" class="btn secondary">+ Food 200</button>
+        <button id="quickRent" class="btn secondary">+ Rent 10000</button>
+        <button id="quickSalary" class="btn secondary">+ Salary 50000</button>
+      </div>
+      <div class="right">
+        <input id="search" class="input" placeholder="Search notes/category…" />
+        <select id="typeFilter" class="select">
+          <option value="">All Types</option>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+        <select id="categoryFilter" class="select">
+          <option value="">All Categories</option>
+          <option>Food</option><option>Rent</option><option>Travel</option>
+          <option>Shopping</option><option>Salary</option><option>Other</option>
+        </select>
+        <input type="date" id="fromDate" class="input" />
+        <input type="date" id="toDate" class="input" />
+        <button id="clearFilters" class="btn secondary">Clear</button>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin:6px 0 10px">Category Split</h3>
+        <canvas id="categoryChart" height="150"></canvas>
+      </div>
+      <div class="card">
+        <h3 style="margin:6px 0 10px">Monthly Trend</h3>
+        <canvas id="monthlyChart" height="150"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-head">
+        <h2 id="modalTitle">Add Transaction</h2>
+        <button id="closeModal" class="btn secondary">✖</button>
+      </div>
+      <form id="transactionForm">
+        <div class="grid">
+          <label>Date<input type="date" id="date" class="input" required></label>
+          <label>Type
+            <select id="type" class="select">
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+            </select>
+          </label>
+          <label>Category
+            <select id="category" class="select">
+              <option>Food</option><option>Rent</option><option>Travel</option>
+              <option>Shopping</option><option>Salary</option><option>Other</option>
+            </select>
+          </label>
+          <label>Amount<input type="number" id="amount" class="input" step="0.01" required></label>
+          <label>Notes<input type="text" id="notes" class="input" placeholder="Optional"></label>
+          <label style="align-self:end"><input type="checkbox" id="recurring"> Recurring</label>
+          <label>Budget Goal<input type="number" id="goalInput" class="input" step="0.01" placeholder="Set/Update monthly goal"></label>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn">Save</button>
+          <button type="button" id="resetForm" class="btn secondary">Reset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+  <script>window.PAGE='dashboard';</script>
+</body>
+</html>

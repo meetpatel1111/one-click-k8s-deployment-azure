@@ -1,0 +1,150 @@
+name: HPA Fortio stress test for autoscaling (AKS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      cluster_name:
+        description: 'AKS Cluster name'
+        required: true
+        default: 'aks-cluster-dev'
+      resource_group:
+        description: 'Azure Resource Group that contains the AKS cluster'
+        required: true
+        default: 'aks-cluster-dev-rg'
+      namespace:
+        description: 'Kubernetes namespace'
+        required: true
+        default: 'default'
+      service_name:
+        description: 'Target service name'
+        required: true
+        default: 'nodejs-service'
+        type: choice
+        options:
+          - nodejs-service
+          - nginx-service
+          - k8sgpt-service
+      path:
+        description: 'Service endpoint path'
+        required: true
+        default: '/nodejs/'
+        type: choice
+        options:
+          - '/nodejs/'
+          - '/nginx/'
+          - '/k8sgpt/'
+      qps:
+        description: 'Queries per second'
+        required: true
+        default: '500'
+      load_duration:
+        description: 'Duration of stress load (e.g., 120s)'
+        required: true
+        default: '120s'
+
+jobs:
+  hpa-stress-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        # Use a federated workload identity or a classic SP JSON here
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v4
+      with:
+        version: 'latest'
+
+    - name: Get AKS kubeconfig
+      run: |
+        az aks get-credentials \
+          -g "${{ github.event.inputs.resource_group }}" \
+          -n "${{ github.event.inputs.cluster_name }}" \
+          --overwrite-existing
+
+    - name: Derive service port and app label
+      id: derive
+      shell: bash
+      run: |
+        set -euo pipefail
+        SVC="${{ github.event.inputs.service_name }}"
+        case "$SVC" in
+          nodejs-service)
+            echo "SERVICE_PORT=3000" >> $GITHUB_ENV
+            echo "APP_LABEL=nodejs-app" >> $GITHUB_ENV
+            ;;
+          nginx-service)
+            echo "SERVICE_PORT=80" >> $GITHUB_ENV
+            echo "APP_LABEL=nginx" >> $GITHUB_ENV
+            ;;
+          k8sgpt-service)
+            echo "SERVICE_PORT=80" >> $GITHUB_ENV
+            echo "APP_LABEL=k8sgpt" >> $GITHUB_ENV
+            ;;
+          *)
+            echo "Unknown service: $SVC" >&2
+            exit 1
+            ;;
+        esac
+        # Convert duration like 120s -> 120 for `timeout`
+        LD="${{ github.event.inputs.load_duration }}"
+        LD_NUM="${LD%s}"
+        [[ "$LD_NUM" =~ ^[0-9]+$ ]] || { echo "Invalid load_duration format. Use e.g. 120s"; exit 1; }
+        echo "LOAD_DURATION_SECS=$LD_NUM" >> $GITHUB_ENV
+
+    - name: Start Fortio Load (Scale-Up Trigger)
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "Starting Fortio load for ${{ github.event.inputs.load_duration }} at ${{ github.event.inputs.qps }} QPS"
+        kubectl run fortio-load \
+          --image=fortio/fortio \
+          -n "${{ github.event.inputs.namespace }}" \
+          --restart=Never \
+          --command -- \
+          fortio load -qps "${{ github.event.inputs.qps }}" -t "${{ github.event.inputs.load_duration }}" \
+          "http://${{ github.event.inputs.service_name }}.${{ github.event.inputs.namespace }}.svc.cluster.local:${SERVICE_PORT}${{ github.event.inputs.path }}" &
+        # brief pause to ensure pod starts
+        sleep 5
+        kubectl get pod fortio-load -n "${{ github.event.inputs.namespace }}" || true
+
+    - name: Watch HPA Scaling (During Load)
+      shell: bash
+      run: |
+        echo "Watching HPA during load..."
+        timeout ${LOAD_DURATION_SECS} kubectl get hpa -n "${{ github.event.inputs.namespace }}" -w || true
+
+    - name: Describe HPA(s) (snapshot during/after load)
+      shell: bash
+      run: |
+        echo "==== HPA Describe (all) ===="
+        for h in $(kubectl get hpa -n "${{ github.event.inputs.namespace }}" -o jsonpath='{.items[*].metadata.name}'); do
+          echo "--- $h ---"
+          kubectl describe hpa "$h" -n "${{ github.event.inputs.namespace }}" || true
+        done
+
+    - name: Cleanup Fortio Pod
+      if: always()
+      run: |
+        kubectl delete pod fortio-load -n "${{ github.event.inputs.namespace }}" --ignore-not-found
+
+    - name: Wait for Scale-Down Window
+      run: |
+        echo "Waiting 4 minutes 30 seconds to allow scale-down start (HPA stabilizationWindowSeconds≈300)..."
+        sleep 270
+
+    - name: Watch HPA Scaling (Scale-Down)
+      run: |
+        echo "Watching HPA scale down..."
+        timeout 120 kubectl get hpa -n "${{ github.event.inputs.namespace }}" -w || true
+
+    - name: Watch Pods Scaling (post-load)
+      run: |
+        echo "Listing pods with app label '${APP_LABEL}' after load:"
+        kubectl get pods -l "app=${APP_LABEL}" -n "${{ github.event.inputs.namespace }}" -o wide

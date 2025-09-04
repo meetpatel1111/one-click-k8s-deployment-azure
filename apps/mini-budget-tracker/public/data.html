@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Budget Tracker — Data Table</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <h1>📊 Budget Tracker — Transactions</h1>
+    <div class="nav">
+      <a class="btn secondary" href="index.html">Dashboard</a>
+      <select id="currencySelect" class="select">
+        <option value="₹">₹</option><option value="$">$</option><option value="€">€</option>
+      </select>
+      <button id="themeToggle" class="btn secondary">🌙</button>
+      <button id="addBtn" class="btn">➕ Add</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="table-card">
+      <div class="table-toolbar">
+        <div>
+          <input id="search" class="input" placeholder="Search notes/category…" />
+          <select id="typeFilter" class="select">
+            <option value="">All Types</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+          <select id="categoryFilter" class="select">
+            <option value="">All Categories</option>
+            <option>Food</option><option>Rent</option><option>Travel</option>
+            <option>Shopping</option><option>Salary</option><option>Other</option>
+          </select>
+          <input type="date" id="fromDate" class="input" />
+          <input type="date" id="toDate" class="input" />
+          <button id="clearFilters" class="btn secondary">Clear</button>
+        </div>
+        <div>
+          <button id="exportCsv" class="btn secondary">Export CSV</button>
+          <button id="exportJson" class="btn secondary">Export JSON</button>
+          <input type="file" id="importFile" class="input" />
+        </div>
+      </div>
+
+      <table class="table" id="txnTable">
+        <thead>
+          <tr>
+            <th data-sort="date">Date ⬍</th>
+            <th data-sort="type">Type ⬍</th>
+            <th data-sort="category">Category ⬍</th>
+            <th data-sort="amount">Amount ⬍</th>
+            <th>Notes</th>
+            <th>Recurring</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="transactionsBody"></tbody>
+      </table>
+
+      <div class="pagination">
+        <button id="prevPage" class="btn secondary">Prev</button>
+        <span id="pageInfo">Page 1/1</span>
+        <button id="nextPage" class="btn secondary">Next</button>
+        <select id="pageSize" class="select">
+          <option value="10">10</option>
+          <option value="25" selected>25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+        <span id="rowCount"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal same as dashboard -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-head">
+        <h2 id="modalTitle">Add Transaction</h2>
+        <button id="closeModal" class="btn secondary">✖</button>
+      </div>
+      <form id="transactionForm">
+        <div class="grid">
+          <label>Date<input type="date" id="date" class="input" required></label>
+          <label>Type
+            <select id="type" class="select">
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+            </select>
+          </label>
+          <label>Category
+            <select id="category" class="select">
+              <option>Food</option><option>Rent</option><option>Travel</option>
+              <option>Shopping</option><option>Salary</option><option>Other</option>
+            </select>
+          </label>
+          <label>Amount<input type="number" id="amount" class="input" step="0.01" required></label>
+          <label>Notes<input type="text" id="notes" class="input" placeholder="Optional"></label>
+          <label style="align-self:end"><input type="checkbox" id="recurring"> Recurring</label>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn">Save</button>
+          <button type="button" id="resetForm" class="btn secondary">Reset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>window.PAGE='table';</script>
+</body>
+</html>
