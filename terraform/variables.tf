@@ -52,7 +52,7 @@ variable "kubernetes_version" {
 # Quota-friendly defaults (adjust in tfvars when you have more quota)
 variable "node_vm_size" {
   type    = string
-  default = "Standard_B1ms" # was B2s; B1ms uses 1 vCPU
+  default = "Standard_B4ms" # was B2s; B1ms uses 1 vCPU
 }
 
 variable "desired_capacity" {

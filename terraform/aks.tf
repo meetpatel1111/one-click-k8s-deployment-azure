@@ -32,7 +32,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     vnet_subnet_id               = azurerm_subnet.system.id
 
     # Required when changing immutable properties on the default pool
-    temporary_name_for_rotation = "sysrot"
+    # temporary_name_for_rotation = "sysrot"
   }
 
   identity {
