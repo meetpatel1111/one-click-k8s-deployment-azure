@@ -30,6 +30,9 @@ resource "azurerm_kubernetes_cluster" "aks" {
     max_count                    = var.max_size
     only_critical_addons_enabled = var.enable_user_pool
     vnet_subnet_id               = azurerm_subnet.system.id
+
+    # Required when changing immutable properties on the default pool
+    temporary_name_for_rotation  = "sysrot"
   }
 
   identity {
@@ -67,6 +70,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
 # --------------------------------------------
 # FUTURE USE: Dedicated User Pool for workloads
+# Un-comment when you have quota and want separation
 # --------------------------------------------
 # resource "azurerm_kubernetes_cluster_node_pool" "userpool" {
 #   name                  = "usernp"
