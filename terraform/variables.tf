@@ -146,6 +146,11 @@ variable "retro_arcade_galaxy_hpa_max" {
   default = 3
 }
 
+variable "k8sgpt_hpa_max" {
+  type    = number
+  default = 5
+}
+
 # API server access
 variable "enable_public_access" {
   description = "If false, makes AKS private. If true, public API server with optional authorized IP ranges."
