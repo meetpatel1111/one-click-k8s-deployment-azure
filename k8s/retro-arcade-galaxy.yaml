@@ -4,64 +4,91 @@ kind: Deployment
 metadata:
   name: retro-arcade-galaxy
   namespace: default
+  labels:
+    app.kubernetes.io/name: retro-arcade-galaxy
+    app.kubernetes.io/part-of: arcade
 spec:
   replicas: ${RETRO_ARCADE_GALAXY_HPA_MIN}
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
-      app: retro-arcade-galaxy
+      app.kubernetes.io/name: retro-arcade-galaxy
   template:
     metadata:
       labels:
-        app: retro-arcade-galaxy
+        app.kubernetes.io/name: retro-arcade-galaxy
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
       containers:
-      - name: retro-arcade-galaxy
-        image: "meetpatel1111/retro-arcade-galaxy:${ENVIRONMENT}"
-        ports:
-        - containerPort: 3000
-        imagePullPolicy: Always
-        env:
-          - name: GEMINI_API_KEY
-            valueFrom:
-              secretKeyRef:
-                name: retro-arcade-secret
-                key: GEMINI_API_KEY
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 3
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        resources:
-          requests:
-            cpu: "100m"
-            memory: "128Mi"
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-
+        - name: retro-arcade-galaxy
+          image: "${RETRO_ARCADE_IMAGE}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retro-arcade-secret
+                  key: GEMINI_API_KEY
+            - name: NODE_ENV
+              value: "${ENVIRONMENT}"
+            - name: PORT
+              value: "3000"
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: retro-arcade-service
   namespace: default
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+  labels:
+    app.kubernetes.io/name: retro-arcade-galaxy
 spec:
   selector:
-    app: retro-arcade-galaxy
+    app.kubernetes.io/name: retro-arcade-galaxy
   type: ClusterIP
   ports:
-    - port: 3000
-      targetPort: 3000
-
+    - name: http
+      port: 3000
+      targetPort: http
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -95,3 +122,14 @@ spec:
         - type: Percent
           value: 50
           periodSeconds: 60
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: retro-arcade-galaxy-pdb
+  namespace: default
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: retro-arcade-galaxy

@@ -3,6 +3,8 @@ kind: Ingress
 metadata:
   name: retro-arcade-ingress
   namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   rules:
