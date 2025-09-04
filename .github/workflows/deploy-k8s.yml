@@ -196,6 +196,28 @@ jobs:
       - name: Verify kubectl version
         run: kubectl version --client
 
+      # ---------- read TF outputs & get kubeconfig ----------
+      - name: Terraform Init (for reading outputs) — shared backend
+        run: |
+          cd "${TF_DIR}"
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
+          RG_NAME="${BACKEND_RG}"
+          SA_NAME="${BACKEND_SA}"
+          CONTAINER_NAME="${BACKEND_CONTAINER}"
+          KEY_PATH="aks/${ENVIRONMENT}.tfstate"
+
+          terraform init -input=false -reconfigure \
+            -backend-config="resource_group_name=${RG_NAME}" \
+            -backend-config="storage_account_name=${SA_NAME}" \
+            -backend-config="container_name=${CONTAINER_NAME}" \
+            -backend-config="key=${KEY_PATH}"
+
+      - name: Get AKS kubeconfig
+        run: |
+          RG_NAME=$(terraform -chdir="${TF_DIR}" output -raw resource_group_name)
+          CLUSTER_NAME=$(terraform -chdir="${TF_DIR}" output -raw cluster_name)
+          az aks get-credentials -g "$RG_NAME" -n "$CLUSTER_NAME" --overwrite-existing
+
       # ---------- ACR login & build/push ----------
       - name: Fetch ACR outputs & login
         run: |
@@ -207,7 +229,8 @@ jobs:
 
       - name: Build & Push Node.js App Image (ACR)
         run: |
-          NODEJS_IMAGE="${ACR_SERVER}/nodejs-app:${{ github.sha }}"
+          TAG="${{ env.ENVIRONMENT }}"       
+          NODEJS_IMAGE="${ACR_SERVER}/nodejs-app:${TAG}"
           echo "NODEJS_IMAGE=$NODEJS_IMAGE" >> $GITHUB_ENV
           cd apps/nodejs-app
           docker build --no-cache -t "$NODEJS_IMAGE" .
@@ -223,7 +246,8 @@ jobs:
 
       - name: Build & Push Retro Arcade Galaxy App Image (ACR)
         run: |
-          RETRO_ARCADE_IMAGE="${ACR_SERVER}/retro-arcade-galaxy:${{ github.sha }}"
+          TAG="${{ env.ENVIRONMENT }}" 
+          RETRO_ARCADE_IMAGE="${ACR_SERVER}/retro-arcade-galaxy:${TAG}"
           echo "RETRO_ARCADE_IMAGE=$RETRO_ARCADE_IMAGE" >> $GITHUB_ENV
           git clone https://github.com/meetpatel1111/retro-arcade-galaxy.git
           cd retro-arcade-galaxy
@@ -247,28 +271,6 @@ jobs:
           exit-code: '0'
           severity: 'CRITICAL,HIGH'
           github-pat: ${{ secrets.GH_PAT }}
-
-      # ---------- read TF outputs & get kubeconfig ----------
-      - name: Terraform Init (for reading outputs) — shared backend
-        run: |
-          cd "${TF_DIR}"
-          ENVIRONMENT="${{ github.event.inputs.environment }}"
-          RG_NAME="${BACKEND_RG}"
-          SA_NAME="${BACKEND_SA}"
-          CONTAINER_NAME="${BACKEND_CONTAINER}"
-          KEY_PATH="aks/${ENVIRONMENT}.tfstate"
-
-          terraform init -input=false -reconfigure \
-            -backend-config="resource_group_name=${RG_NAME}" \
-            -backend-config="storage_account_name=${SA_NAME}" \
-            -backend-config="container_name=${CONTAINER_NAME}" \
-            -backend-config="key=${KEY_PATH}"
-
-      - name: Get AKS kubeconfig
-        run: |
-          RG_NAME=$(terraform -chdir="${TF_DIR}" output -raw resource_group_name)
-          CLUSTER_NAME=$(terraform -chdir="${TF_DIR}" output -raw cluster_name)
-          az aks get-credentials -g "$RG_NAME" -n "$CLUSTER_NAME" --overwrite-existing
 
       - name: Install Metrics Server
         run: |
