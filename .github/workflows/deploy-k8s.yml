@@ -106,6 +106,7 @@ jobs:
 
       - name: Pre-bootstrap Terraform backend
         run: |
+          chmod +x ./terraform/bootstrap/prebootstrap.sh
           ./terraform/bootstrap/prebootstrap.sh \
             "${BACKEND_RG}" \
             "${BACKEND_SA}" \
