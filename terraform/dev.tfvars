@@ -1,25 +1,44 @@
-# Required strings must be quoted
+################################
+# Environment
+################################
 environment         = "dev"
 location            = "eastus"
 resource_group_name = "rg-aks-dev"
 cluster_name        = "aks-dev"
 
+################################
 # ACR
+################################
 acr_name = "acrdevjm"
 acr_sku  = "Basic"
 
-# Node pool
-node_vm_size     = "Standard_B2s"
-desired_capacity = 2
+################################
+# Node pool (system pool)
+################################
+node_vm_size     = "Standard_B1ms"
+desired_capacity = 1
 min_size         = 1
-max_size         = 3
+max_size         = 1
 
+################################
+# Optional user pool (disabled for now)
+################################
+enable_user_pool      = false
+user_node_vm_size     = "Standard_B1ms"
+user_desired_capacity = 0
+user_min_size         = 0
+user_max_size         = 1
+
+################################
 # Images (strings)
+################################
 nodejs_docker_image       = "acrdevjm.azurecr.io/nodejs-app:dev"
 mini_budget_tracker_image = "acrdevjm.azurecr.io/mini-budget:dev"
 retro_arcade_docker_image = "acrdevjm.azurecr.io/retro-arcade-galaxy:dev"
 
+################################
 # Replicas / HPA (numbers)
+################################
 nginx_replicas               = 2
 nodejs_replicas              = 2
 mini_budget_tracker_replicas = 2
@@ -32,11 +51,14 @@ mini_budget_tracker_hpa_max = 5
 retro_arcade_galaxy_hpa_max = 3
 k8sgpt_hpa_max              = 3
 
-# Booleans/lists don’t need quotes
+################################
+# API server access
+################################
 enable_public_access = true
 authorized_ip_ranges = []
 
-# AKS network (must not overlap VNet 10.0.0.0/16 or subnets)
-service_cidr       = "10.2.0.0/16"
-dns_service_ip     = "10.2.0.10"
-docker_bridge_cidr = "172.17.0.1/16"
+################################
+# AKS service CIDRs
+################################
+service_cidr   = "10.2.0.0/16"
+dns_service_ip = "10.2.0.10"
