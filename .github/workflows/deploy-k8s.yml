@@ -272,20 +272,35 @@ jobs:
           severity: 'CRITICAL,HIGH'
           github-pat: ${{ secrets.GH_PAT }}
 
-      - name: Install Metrics Server (pinned + override)
+      - name: Install Metrics Server (reset kube-system limits)
         run: |
           set -euo pipefail
 
-          # (Optional) ensure kube-system defaults won't cap below our requests
-          kubectl apply -f k8s/kube-system-limitrange.yaml || true
+          # 1) Remove any existing LimitRanges in kube-system
+          kubectl -n kube-system get limitrange -o name | xargs -r kubectl -n kube-system delete
 
-          # Apply upstream (pin if you want reproducibility)
+          # 2) Create a sane LimitRange so upstream requests (200Mi) are allowed
+          kubectl -n kube-system apply -f - <<'EOF'
+          apiVersion: v1
+          kind: LimitRange
+          metadata:
+            name: kube-system-defaults
+            namespace: kube-system
+          spec:
+            limits:
+            - type: Container
+              defaultRequest:
+                cpu: 100m
+                memory: 200Mi
+              default:
+                cpu: 200m
+                memory: 256Mi
+          EOF
+
+          # 3) Apply upstream metrics-server bundle
           kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
-          # Apply your permanent override (adds limits >= requests)
-          kubectl apply -f k8s/metrics-server-override.yaml
-
-          # Wait for rollout
+          # 4) Wait for rollout
           kubectl -n kube-system rollout status deploy/metrics-server --timeout=300s
 
       - name: Export replicas and HPA settings from TFVARS
