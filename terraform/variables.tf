@@ -1,4 +1,7 @@
-variable "environment" {
+################################
+# Core / environment
+################################
+variable "environment" { 
   type = string
 }
 
@@ -13,11 +16,11 @@ variable "resource_group_name" {
   default     = null
 }
 
-variable "cluster_name" {
-  type = string
-}
+variable "cluster_name" { type = string }
 
-# Networking
+################################
+# Networking (VNet/Subnets)
+################################
 variable "vnet_cidr" {
   type    = string
   default = "10.0.0.0/16"
@@ -33,20 +36,23 @@ variable "user_subnet_cidr" {
   default = "10.0.16.0/20"
 }
 
+################################
 # AKS settings
+################################
 variable "kubernetes_version" {
   type    = string
   default = null
 }
 
+# Quota-friendly defaults (adjust in tfvars when you have more quota)
 variable "node_vm_size" {
   type    = string
-  default = "Standard_B2s"
+  default = "Standard_B1ms" # was B2s; B1ms uses 1 vCPU
 }
 
 variable "desired_capacity" {
   type    = number
-  default = 2
+  default = 1
 }
 
 variable "min_size" {
@@ -56,12 +62,7 @@ variable "min_size" {
 
 variable "max_size" {
   type    = number
-  default = 3
-}
-
-variable "enable_private_cluster" {
-  type    = bool
-  default = false
+  default = 1
 }
 
 variable "sku_tier" {
@@ -74,7 +75,35 @@ variable "oidc_issuer_enabled" {
   default = true
 }
 
+# Toggle a dedicated User pool later (kept commented in aks.tf by default)
+variable "enable_user_pool" {
+  type    = bool
+  default = false
+}
+
+variable "user_node_vm_size" {
+  type    = string
+  default = "Standard_B1ms"
+}
+
+variable "user_desired_capacity" {
+  type    = number
+  default = 0
+}
+
+variable "user_min_size" {
+  type    = number
+  default = 0
+}
+
+variable "user_max_size" {
+  type    = number
+  default = 1
+}
+
+################################
 # ACR
+################################
 variable "acr_name" {
   type    = string
   default = null
@@ -85,7 +114,9 @@ variable "acr_sku" {
   default = "Basic"
 }
 
-# Images & replicas (to mirror current app vars)
+################################
+# Images & replicas
+################################
 variable "nodejs_docker_image" {
   type    = string
   default = null
@@ -151,7 +182,9 @@ variable "k8sgpt_hpa_max" {
   default = 5
 }
 
+################################
 # API server access
+################################
 variable "enable_public_access" {
   description = "If false, makes AKS private. If true, public API server with optional authorized IP ranges."
   type        = bool
@@ -164,17 +197,24 @@ variable "authorized_ip_ranges" {
   default     = []
 }
 
+################################
+# AKS Service CIDRs (must not overlap VNet/Subnets)
+################################
 variable "service_cidr" {
   type    = string
   default = "10.2.0.0/16"
+  validation {
+    condition     = can(cidrnetmask(var.service_cidr))
+    error_message = "service_cidr must be a valid CIDR."
+  }
 }
 
 variable "dns_service_ip" {
   type    = string
   default = "10.2.0.10"
-}
-
-variable "docker_bridge_cidr" {
-  type    = string
-  default = "172.17.0.1/16"
+  validation {
+    # ensure it's inside the service_cidr (basic check)
+    condition     = cidrhost(var.service_cidr, 10) == var.dns_service_ip
+    error_message = "dns_service_ip must be an IP inside service_cidr."
+  }
 }
