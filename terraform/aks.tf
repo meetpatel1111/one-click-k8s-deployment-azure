@@ -19,8 +19,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
   oidc_issuer_enabled       = var.oidc_issuer_enabled
   workload_identity_enabled = var.oidc_issuer_enabled
 
-  # Single pool for now (system + workloads). When a user pool is enabled,
-  # this flips to "critical-only" automatically.
+  # Single pool for now (system + workloads).
+  # When a user pool is enabled, this flips to "critical-only".
   default_node_pool {
     name                         = "system"
     vm_size                      = var.node_vm_size
@@ -32,7 +32,9 @@ resource "azurerm_kubernetes_cluster" "aks" {
     vnet_subnet_id               = azurerm_subnet.system.id
   }
 
-  identity { type = "SystemAssigned" }
+  identity {
+    type = "SystemAssigned"
+  }
 
   network_profile {
     network_plugin    = "azure"
@@ -43,7 +45,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
     # Must not overlap with your VNet/subnets
     service_cidr   = var.service_cidr
     dns_service_ip = var.dns_service_ip
-    # docker_bridge_cidr removed (deprecated)
   }
 
   # When public access is enabled, optionally restrict IPs
@@ -58,13 +59,20 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
   # Avoid drift when the autoscaler adjusts node_count
   lifecycle {
-    ignore_changes = [default_node_pool[0].node_count]
+    ignore_changes = [
+      default_node_pool[0].node_count
+    ]
+  }
+
+  # Cross-variable check belongs at the resource level
+  precondition {
+    condition     = cidrhost(var.service_cidr, 10) == var.dns_service_ip
+    error_message = "dns_service_ip must be inside service_cidr (${var.service_cidr})."
   }
 }
 
 # --------------------------------------------
 # FUTURE USE: Dedicated User Pool for workloads
-# Un-comment when you have quota and want separation
 # --------------------------------------------
 # resource "azurerm_kubernetes_cluster_node_pool" "userpool" {
 #   name                  = "usernp"
@@ -87,7 +95,9 @@ resource "azurerm_kubernetes_cluster" "aks" {
 #   }
 #
 #   lifecycle {
-#     ignore_changes = [node_count]
+#     ignore_changes = [
+#       node_count
+#     ]
 #   }
 # }
 

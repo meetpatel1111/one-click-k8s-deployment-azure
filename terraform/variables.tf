@@ -1,7 +1,8 @@
 ################################
 # Core / environment
 ################################
-variable "environment" { 
+
+variable "environment" {
   type = string
 }
 
@@ -16,11 +17,14 @@ variable "resource_group_name" {
   default     = null
 }
 
-variable "cluster_name" { type = string }
+variable "cluster_name" {
+  type = string
+}
 
 ################################
 # Networking (VNet/Subnets)
 ################################
+
 variable "vnet_cidr" {
   type    = string
   default = "10.0.0.0/16"
@@ -39,6 +43,7 @@ variable "user_subnet_cidr" {
 ################################
 # AKS settings
 ################################
+
 variable "kubernetes_version" {
   type    = string
   default = null
@@ -104,6 +109,7 @@ variable "user_max_size" {
 ################################
 # ACR
 ################################
+
 variable "acr_name" {
   type    = string
   default = null
@@ -117,6 +123,7 @@ variable "acr_sku" {
 ################################
 # Images & replicas
 ################################
+
 variable "nodejs_docker_image" {
   type    = string
   default = null
@@ -185,6 +192,7 @@ variable "k8sgpt_hpa_max" {
 ################################
 # API server access
 ################################
+
 variable "enable_public_access" {
   description = "If false, makes AKS private. If true, public API server with optional authorized IP ranges."
   type        = bool
@@ -200,9 +208,11 @@ variable "authorized_ip_ranges" {
 ################################
 # AKS Service CIDRs (must not overlap VNet/Subnets)
 ################################
+
 variable "service_cidr" {
   type    = string
   default = "10.2.0.0/16"
+
   validation {
     condition     = can(cidrnetmask(var.service_cidr))
     error_message = "service_cidr must be a valid CIDR."
@@ -212,9 +222,10 @@ variable "service_cidr" {
 variable "dns_service_ip" {
   type    = string
   default = "10.2.0.10"
+
+  # IP format check (no cross-var refs)
   validation {
-    # ensure it's inside the service_cidr (basic check)
-    condition     = cidrhost(var.service_cidr, 10) == var.dns_service_ip
-    error_message = "dns_service_ip must be an IP inside service_cidr."
+    condition     = can(cidrhost(format("%s/32", var.dns_service_ip), 0))
+    error_message = "dns_service_ip must be a valid IPv4 address."
   }
 }
