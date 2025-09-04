@@ -272,48 +272,22 @@ jobs:
           severity: 'CRITICAL,HIGH'
           github-pat: ${{ secrets.GH_PAT }}
 
-      - name: Install Metrics Server (reset kube-system limits)
+      - name: Install Metrics Server (with LimitRange fix)
         run: |
           set -euo pipefail
 
-          # 1) Remove any existing LimitRanges in kube-system
-          kubectl -n kube-system get limitrange -o name | xargs -r kubectl -n kube-system delete
-
-          # 2) Create a sane LimitRange so upstream requests (200Mi) are allowed
-          kubectl -n kube-system apply -f - <<'EOF'
-          apiVersion: v1
-          kind: LimitRange
-          metadata:
-            name: kube-system-defaults
-            namespace: kube-system
-          spec:
-            limits:
-            - type: Container
-              defaultRequest:
-                cpu: 100m
-                memory: 200Mi
-              default:
-                cpu: 200m
-                memory: 256Mi
-          EOF
-
-          # 2b) Wait until the new LimitRange is in effect (no old ones left)
-          for i in {1..30}; do
-            cnt=$(kubectl -n kube-system get limitrange --no-headers 2>/dev/null | wc -l || echo 0)
-            if [ "$cnt" -eq 1 ]; then
-              echo "New LimitRange is active"
-              break
-            fi
-            echo "Waiting for kube-system LimitRange to stabilize..."
-            sleep 2
-          done
-
-          # 3) Apply upstream metrics-server bundle
-          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-
-          # 4) Wait for rollout
+          # Delete old LimitRanges, create sane defaults, verify admission with test pod, then install metrics-server
+          kubectl -n kube-system get limitrange -o name | xargs -r kubectl -n kube-system delete || true && \
+          kubectl -n kube-system create limitrange kube-system-defaults \
+            --dry-run=client -o json \
+            --limits='{"type":"Container","defaultRequest":{"cpu":"100m","memory":"200Mi"},"default":{"cpu":"200m","memory":"256Mi"}}' \
+            | kubectl apply -f - && \
+          kubectl -n kube-system run metrics-admit-test --image=k8s.gcr.io/pause:3.9 --restart=Never \
+            --requests=cpu=100m,memory=200Mi --limits=cpu=200m,memory=256Mi && \
+          kubectl -n kube-system wait --for=condition=PodScheduled pod/metrics-admit-test --timeout=30s && \
+          kubectl -n kube-system delete pod metrics-admit-test --ignore-not-found=true && \
+          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml && \
           kubectl -n kube-system rollout status deploy/metrics-server --timeout=300s
-
 
       - name: Export replicas and HPA settings from TFVARS
         run: |
