@@ -15,9 +15,9 @@ min_size         = 1
 max_size         = 3
 
 # Images (strings)
-nodejs_docker_image       = "acrdevjm.azurecr.io/nodejs-app:${var.environment}"
-mini_budget_tracker_image = "acrdevjm.azurecr.io/mini-budget:${var.environment}"
-retro_arcade_docker_image = "acrdevjm.azurecr.io/retro-arcade-galaxy:${var.environment}"
+nodejs_docker_image       = "acrdevjm.azurecr.io/nodejs-app:dev"
+mini_budget_tracker_image = "acrdevjm.azurecr.io/mini-budget:dev"
+retro_arcade_docker_image = "acrdevjm.azurecr.io/retro-arcade-galaxy:dev"
 
 # Replicas / HPA (numbers)
 nginx_replicas               = 2
