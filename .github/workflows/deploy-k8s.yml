@@ -280,7 +280,7 @@ jobs:
           kubectl -n kube-system get limitrange -o name | xargs -r kubectl -n kube-system delete || true
 
           # 2) Apply the LimitRange manifest
-          kubectl -n kube-system apply -f k8s/system/kube-system-limitrange.yaml
+          kubectl -n kube-system apply -f k8s/kube-system-limitrange.yaml
 
           # 3) Wait until LimitRange exists
           for i in {1..30}; do
@@ -293,7 +293,7 @@ jobs:
           # 4) Apply test pod to verify admission accepts requests
           for i in {1..30}; do
             kubectl -n kube-system delete pod metrics-admit-test --ignore-not-found=true
-            if kubectl -n kube-system apply -f k8s/system/metrics-admit-test.yaml >/dev/null 2>&1; then
+            if kubectl -n kube-system apply -f k8s/metrics-admit-test.yaml >/dev/null 2>&1; then
               sleep 2
               if kubectl -n kube-system get pod metrics-admit-test >/dev/null 2>&1; then
                 echo "Admission accepts 200Mi requests — proceeding"
