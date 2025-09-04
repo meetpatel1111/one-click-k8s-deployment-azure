@@ -6,8 +6,15 @@ output "cluster_name" {
   value = azurerm_kubernetes_cluster.aks.name
 }
 
-output "kube_config" {
-  value     = azurerm_kubernetes_cluster.aks.kube_config[0].raw_kube_config
+# Kubeconfig (user)
+output "kube_config_raw" {
+  value     = azurerm_kubernetes_cluster.aks.kube_config_raw
+  sensitive = true
+}
+
+# Kubeconfig (admin) - optional but handy
+output "kube_admin_config_raw" {
+  value     = azurerm_kubernetes_cluster.aks.kube_admin_config_raw
   sensitive = true
 }
 
