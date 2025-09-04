@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: metrics-admit-test
+  namespace: kube-system
+spec:
+  restartPolicy: Never
+  containers:
+    - name: pause
+      image: k8s.gcr.io/pause:3.9
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "200Mi"
+        limits:
+          cpu: "200m"
+          memory: "256Mi"
