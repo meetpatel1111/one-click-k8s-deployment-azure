@@ -1,5 +1,5 @@
 ############################################
-# AKS Cluster + User Node Pool + ACR RBAC #
+# AKS Cluster + (Optional) User Node Pool + ACR RBAC
 ############################################
 
 resource "azurerm_kubernetes_cluster" "aks" {
@@ -19,6 +19,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
   oidc_issuer_enabled       = var.oidc_issuer_enabled
   workload_identity_enabled = var.oidc_issuer_enabled
 
+  # Single pool for now (system + workloads). When a user pool is enabled,
+  # this flips to "critical-only" automatically.
   default_node_pool {
     name                         = "system"
     vm_size                      = var.node_vm_size
@@ -26,13 +28,11 @@ resource "azurerm_kubernetes_cluster" "aks" {
     enable_auto_scaling          = true
     min_count                    = var.min_size
     max_count                    = var.max_size
-    only_critical_addons_enabled = true
+    only_critical_addons_enabled = var.enable_user_pool
     vnet_subnet_id               = azurerm_subnet.system.id
   }
 
-  identity {
-    type = "SystemAssigned"
-  }
+  identity { type = "SystemAssigned" }
 
   network_profile {
     network_plugin    = "azure"
@@ -40,13 +40,13 @@ resource "azurerm_kubernetes_cluster" "aks" {
     load_balancer_sku = "standard"
     outbound_type     = "loadBalancer"
 
-    # IMPORTANT: must not overlap with your VNet/Subnets
-    service_cidr       = var.service_cidr
-    dns_service_ip     = var.dns_service_ip
-    docker_bridge_cidr = var.docker_bridge_cidr
+    # Must not overlap with your VNet/subnets
+    service_cidr   = var.service_cidr
+    dns_service_ip = var.dns_service_ip
+    # docker_bridge_cidr removed (deprecated)
   }
 
-  # When public access is enabled, optionally restrict to IP ranges
+  # When public access is enabled, optionally restrict IPs
   api_server_access_profile {
     authorized_ip_ranges = var.enable_public_access ? var.authorized_ip_ranges : []
   }
@@ -56,38 +56,40 @@ resource "azurerm_kubernetes_cluster" "aks" {
     terraform   = "true"
   }
 
-  # Avoid drift after autoscaler adjusts counts
+  # Avoid drift when the autoscaler adjusts node_count
   lifecycle {
     ignore_changes = [default_node_pool[0].node_count]
   }
 }
 
-resource "azurerm_kubernetes_cluster_node_pool" "userpool" {
-  name                  = "usernp"
-  kubernetes_cluster_id = azurerm_kubernetes_cluster.aks.id
-  vm_size               = var.node_vm_size
-
-  # Start size; autoscaler will manage between min/max
-  node_count          = var.desired_capacity
-  enable_auto_scaling = true
-  min_count           = var.min_size
-  max_count           = var.max_size
-
-  mode           = "User"
-  vnet_subnet_id = azurerm_subnet.user.id
-
-  # Keep pool on same K8s version as control plane
-  orchestrator_version = azurerm_kubernetes_cluster.aks.kubernetes_version
-
-  tags = {
-    environment = var.environment
-    terraform   = "true"
-  }
-
-  lifecycle {
-    ignore_changes = [node_count]
-  }
-}
+# --------------------------------------------
+# FUTURE USE: Dedicated User Pool for workloads
+# Un-comment when you have quota and want separation
+# --------------------------------------------
+# resource "azurerm_kubernetes_cluster_node_pool" "userpool" {
+#   name                  = "usernp"
+#   kubernetes_cluster_id = azurerm_kubernetes_cluster.aks.id
+#   vm_size               = var.user_node_vm_size
+#
+#   # Start at 0; autoscaler adds nodes on demand
+#   node_count            = var.user_desired_capacity
+#   enable_auto_scaling   = true
+#   min_count             = var.user_min_size
+#   max_count             = var.user_max_size
+#
+#   mode                  = "User"
+#   vnet_subnet_id        = azurerm_subnet.user.id
+#   orchestrator_version  = azurerm_kubernetes_cluster.aks.kubernetes_version
+#
+#   tags = {
+#     environment = var.environment
+#     terraform   = "true"
+#   }
+#
+#   lifecycle {
+#     ignore_changes = [node_count]
+#   }
+# }
 
 # Allow AKS kubelet to pull from ACR
 resource "azurerm_role_assignment" "acr_pull" {
