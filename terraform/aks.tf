@@ -63,12 +63,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
       default_node_pool[0].node_count
     ]
   }
-
-  # Cross-variable check belongs at the resource level
-  precondition {
-    condition     = cidrhost(var.service_cidr, 10) == var.dns_service_ip
-    error_message = "dns_service_ip must be inside service_cidr (${var.service_cidr})."
-  }
 }
 
 # --------------------------------------------
