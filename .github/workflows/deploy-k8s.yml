@@ -297,11 +297,23 @@ jobs:
                 memory: 256Mi
           EOF
 
+          # 2b) Wait until the new LimitRange is in effect (no old ones left)
+          for i in {1..30}; do
+            cnt=$(kubectl -n kube-system get limitrange --no-headers 2>/dev/null | wc -l || echo 0)
+            if [ "$cnt" -eq 1 ]; then
+              echo "New LimitRange is active"
+              break
+            fi
+            echo "Waiting for kube-system LimitRange to stabilize..."
+            sleep 2
+          done
+
           # 3) Apply upstream metrics-server bundle
           kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
           # 4) Wait for rollout
           kubectl -n kube-system rollout status deploy/metrics-server --timeout=300s
+
 
       - name: Export replicas and HPA settings from TFVARS
         run: |
