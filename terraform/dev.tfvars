@@ -35,3 +35,8 @@ k8sgpt_hpa_max              = 3
 # Booleans/lists don’t need quotes
 enable_public_access = true
 authorized_ip_ranges = []
+
+# AKS network (must not overlap VNet 10.0.0.0/16 or subnets)
+service_cidr       = "10.2.0.0/16"
+dns_service_ip     = "10.2.0.10"
+docker_bridge_cidr = "172.17.0.1/16"

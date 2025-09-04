@@ -41,7 +41,7 @@ variable "kubernetes_version" {
 
 variable "node_vm_size" {
   type    = string
-  default = "Standard_DS2_v2"
+  default = "Standard_B2s"
 }
 
 variable "desired_capacity" {
@@ -162,4 +162,19 @@ variable "authorized_ip_ranges" {
   description = "CIDR list allowed to reach AKS API server if public."
   type        = list(string)
   default     = []
+}
+
+variable "service_cidr" {
+  type    = string
+  default = "10.2.0.0/16"
+}
+
+variable "dns_service_ip" {
+  type    = string
+  default = "10.2.0.10"
+}
+
+variable "docker_bridge_cidr" {
+  type    = string
+  default = "172.17.0.1/16"
 }
