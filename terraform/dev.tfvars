@@ -5,19 +5,19 @@ resource_group_name = "rg-aks-dev"
 cluster_name        = "aks-dev"
 
 # ACR
-acr_name = "acrdev"
+acr_name = "acrdevjm"
 acr_sku  = "Basic"
 
 # Node pool
-node_vm_size     = "Standard_DS2_v2"
+node_vm_size     = "Standard_B2s"
 desired_capacity = 2
 min_size         = 1
 max_size         = 3
 
 # Images (strings)
-nodejs_docker_image       = "acrdev.azurecr.io/nodejs-app:latest"
-mini_budget_tracker_image = "acrdev.azurecr.io/mini-budget:latest"
-retro_arcade_docker_image = "acrdev.azurecr.io/retro-arcade-galaxy:latest"
+nodejs_docker_image       = "acrdevjm.azurecr.io/nodejs-app:${var.environment}"
+mini_budget_tracker_image = "acrdevjm.azurecr.io/mini-budget:${var.environment}"
+retro_arcade_docker_image = "acrdevjm.azurecr.io/retro-arcade-galaxy:${var.environment}"
 
 # Replicas / HPA (numbers)
 nginx_replicas               = 2

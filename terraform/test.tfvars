@@ -13,9 +13,9 @@ enable_public_access = true
 authorized_ip_ranges = []
 
 # Images
-nodejs_docker_image       = "meetpatel1111/nodejs-app:tst"
-mini_budget_tracker_image = "meetpatel1111/mini-budget-tracker:test"
-retro_arcade_docker_image = "meetpatel1111/retro-arcade-galaxy:dev"
+nodejs_docker_image       = "acrdevjm.azurecr.io/nodejs-app:latest"
+mini_budget_tracker_image = "acrdevjm.azurecr.io/mini-budget:latest"
+retro_arcade_docker_image = "acrdevjm.azurecr.io/retro-arcade-galaxy:latest"
 
 # Replicas & HPA max (if you enable the app resources)
 nginx_replicas               = 2
