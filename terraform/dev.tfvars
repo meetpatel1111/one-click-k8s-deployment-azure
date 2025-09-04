@@ -15,7 +15,7 @@ acr_sku  = "Basic"
 ################################
 # Node pool (system pool)
 ################################
-node_vm_size     = "Standard_B1ms"
+node_vm_size     = "Standard_B4ms"
 desired_capacity = 1
 min_size         = 1
 max_size         = 1
