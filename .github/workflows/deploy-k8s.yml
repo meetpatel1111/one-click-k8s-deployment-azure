@@ -299,6 +299,7 @@ jobs:
 
       - name: Export replicas and HPA settings from TFVARS
         run: |
+          TFVARS_FILE="${{ github.event.inputs.environment }}.tfvars"
           ENVFILE="${TF_DIR}/${TFVARS_FILE}"
           export NGINX_REPLICAS=$(grep nginx_replicas "$ENVFILE" | awk -F'=' '{print $2}' | xargs)
           export NODEJS_REPLICAS=$(grep nodejs_replicas "$ENVFILE" | awk -F'=' '{print $2}' | xargs)
@@ -353,11 +354,11 @@ jobs:
 
       - name: Apply Kubernetes Deployments & Services (Azure)
         run: |
-          kubectl apply -f https://github.com/kubernetes/ingress-nginx/controller-v1.13.0/deploy/static/provider/cloud/deploy.yaml
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.13.0/deploy/static/provider/cloud/deploy.yaml
           kubectl wait --namespace ingress-nginx \
-            --for=condition=ready pod \
-            --selector=app.kubernetes.io/component=controller \
-            --timeout=300s
+              --for=condition=ready pod \
+              --selector=app.kubernetes.io/component=controller \
+              --timeout=300s
 
           PROVIDER="${{ github.event.inputs.provider }}"
           ENVIRONMENT="${{ github.event.inputs.environment }}"
