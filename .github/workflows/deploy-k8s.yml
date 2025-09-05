@@ -276,13 +276,18 @@ jobs:
         run: |
           set -euo pipefail
 
-          # 1) Delete any existing LimitRanges that might block admission
-          kubectl -n kube-system get limitrange -o name | xargs -r kubectl -n kube-system delete || true
+          # Check if metrics-server deployment already exists
+          if kubectl get deployment metrics-server -n kube-system >/dev/null 2>&1; then
+            echo "Metrics server deployment already exists, updating..."
+            # Clear the annotation and force update
+            kubectl annotate deployment metrics-server -n kube-system kubectl.kubernetes.io/last-applied-configuration- --ignore-not-found=true
+            kubectl apply -f k8s/metrics-server.yaml --force
+          else
+            echo "Installing new metrics server deployment..."
+            kubectl apply -f k8s/metrics-server.yaml
+          fi
 
-          # 2) Deploy your custom metrics-server manifest
-          kubectl apply -f k8s/metrics-server.yaml
-
-          # 3) Wait for the deployment to be ready
+          # Wait for the deployment to be ready
           kubectl -n kube-system rollout status deployment/metrics-server --timeout=300s
 
       - name: Export replicas and HPA settings from TFVARS
