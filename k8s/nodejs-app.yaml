@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: nodejs-app
-        image: "meetpatel1111/nodejs-app:${ENVIRONMENT}"
+        image: "${NODEJS_IMAGE}"
         ports:
         - containerPort: 3000
         imagePullPolicy: Always 
