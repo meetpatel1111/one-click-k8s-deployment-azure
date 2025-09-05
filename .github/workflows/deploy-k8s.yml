@@ -279,7 +279,6 @@ jobs:
           # Check if metrics-server deployment already exists
           if kubectl get deployment metrics-server -n kube-system >/dev/null 2>&1; then
             echo "Metrics server deployment already exists, updating..."
-            # Clear the annotation and force update
             kubectl annotate deployment metrics-server -n kube-system kubectl.kubernetes.io/last-applied-configuration- --ignore-not-found=true
             kubectl apply -f k8s/metrics-server.yaml --force
           else
@@ -289,6 +288,21 @@ jobs:
 
           # Wait for the deployment to be ready
           kubectl -n kube-system rollout status deployment/metrics-server --timeout=300s
+          
+          # Verify metrics server is working
+          echo "Waiting for metrics server to be ready..."
+          sleep 30
+          
+          # Test if metrics are available
+          for i in {1..10}; do
+            if kubectl top nodes >/dev/null 2>&1; then
+              echo "Metrics server is working correctly!"
+              break
+            else
+              echo "Attempt $i: Waiting for metrics server to respond..."
+              sleep 10
+            fi
+          done
 
       - name: Export replicas and HPA settings from TFVARS
         run: |
