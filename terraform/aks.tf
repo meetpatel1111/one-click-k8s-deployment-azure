@@ -3,10 +3,10 @@
 ############################################
 
 resource "azurerm_kubernetes_cluster" "aks" {
-  name                = "${var.cluster_name}-${var.environment}"
+  name                = local.aks_name
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-  dns_prefix          = "${var.cluster_name}-${var.environment}"
+  dns_prefix          = local.aks_dns_prefix
   sku_tier            = var.sku_tier
 
   # Optional: let Azure pick default if null

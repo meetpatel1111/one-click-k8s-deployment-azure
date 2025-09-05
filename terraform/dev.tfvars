@@ -2,14 +2,16 @@
 # Environment
 ################################
 environment         = "dev"
+environment_type    = "np" # non-prod
 location            = "eastus"
-resource_group_name = "rg-aks-dev"
-cluster_name        = "aks-dev"
+short_location      = "use" # short code for eastus
+resource_group_name = null  # let locals compute rg-np-use-dev
+cluster_name        = null  # let locals compute aks-np-use-dev
 
 ################################
 # ACR
 ################################
-acr_name = "acrdevjm"
+acr_name = null # let locals compute acrdevusenp
 acr_sku  = "Basic"
 
 ################################
@@ -32,9 +34,9 @@ user_max_size         = 1
 ################################
 # Images (strings)
 ################################
-nodejs_docker_image       = "acrdevjm.azurecr.io/nodejs-app:dev"
-mini_budget_tracker_image = "acrdevjm.azurecr.io/mini-budget:dev"
-retro_arcade_docker_image = "acrdevjm.azurecr.io/retro-arcade-galaxy:dev"
+nodejs_docker_image       = "acrnpusedev.azurecr.io/nodejs-app:dev"
+mini_budget_tracker_image = "acrnpusedev.azurecr.io/mini-budget:dev"
+retro_arcade_docker_image = "acrnpusedev.azurecr.io/retro-arcade-galaxy:dev"
 
 ################################
 # Replicas / HPA (numbers)

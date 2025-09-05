@@ -1,5 +1,5 @@
 resource "azurerm_virtual_network" "vnet" {
-  name                = "${var.cluster_name}-${var.environment}-vnet"
+  name                = local.vnet_name
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   address_space       = [var.vnet_cidr]
@@ -9,14 +9,14 @@ resource "azurerm_virtual_network" "vnet" {
 }
 
 resource "azurerm_subnet" "system" {
-  name                 = "aks-system"
+  name                 = local.system_subnet_name
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = [var.system_subnet_cidr]
 }
 
 resource "azurerm_subnet" "user" {
-  name                 = "aks-user"
+  name                 = local.user_subnet_name
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = [var.user_subnet_cidr]
@@ -24,7 +24,7 @@ resource "azurerm_subnet" "user" {
 
 # (Optional) NSGs can be associated to subnets for tighter control.
 resource "azurerm_network_security_group" "aks" {
-  name                = "${var.cluster_name}-${var.environment}-nsg"
+  name                = local.nsg_name
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 

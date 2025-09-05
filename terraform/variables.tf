@@ -1,24 +1,44 @@
 ################################
+# Environment / Naming
+################################
+
+# Short environment type: np (nonprod), p (prod), etc.
+variable "environment_type" {
+  description = "Environment type short code (e.g., np = non-prod, p = prod)"
+  type        = string
+}
+
+# Short region code: use (eastus), eus (eastus2), wus (westus), uks (uksouth), etc.
+variable "short_location" {
+  description = "Short code for Azure location (eastus = use, westus = wus, etc.)"
+  type        = string
+}
+
+################################
 # Core / environment
 ################################
 
 variable "environment" {
-  type = string
+  description = "Logical environment name (dev, stg, prod, etc.)"
+  type        = string
 }
 
 variable "location" {
-  type    = string
-  default = "eastus"
+  description = "Azure region (full name, e.g. 'eastus')"
+  type        = string
+  default     = "eastus"
 }
 
 variable "resource_group_name" {
-  description = "Name of the resource group to create"
+  description = "Name of the resource group to create (optional). If null, computed from locals."
   type        = string
   default     = null
 }
 
 variable "cluster_name" {
-  type = string
+  description = "Cluster short name (optional). If null locals will compute 'aks-{envtype}-{shortloc}-{environment}'."
+  type        = string
+  default     = null
 }
 
 ################################
@@ -26,18 +46,21 @@ variable "cluster_name" {
 ################################
 
 variable "vnet_cidr" {
-  type    = string
-  default = "10.0.0.0/16"
+  description = "Address space for virtual network"
+  type        = string
+  default     = "10.0.0.0/16"
 }
 
 variable "system_subnet_cidr" {
-  type    = string
-  default = "10.0.0.0/20"
+  description = "CIDR for the system subnet"
+  type        = string
+  default     = "10.0.0.0/20"
 }
 
 variable "user_subnet_cidr" {
-  type    = string
-  default = "10.0.16.0/20"
+  description = "CIDR for the user workloads subnet"
+  type        = string
+  default     = "10.0.16.0/20"
 }
 
 ################################
@@ -45,65 +68,75 @@ variable "user_subnet_cidr" {
 ################################
 
 variable "kubernetes_version" {
-  type    = string
-  default = null
+  description = "Kubernetes version (leave null to let Azure choose)."
+  type        = string
+  default     = null
 }
 
-# Quota-friendly defaults (adjust in tfvars when you have more quota)
 variable "node_vm_size" {
-  type    = string
-  default = "Standard_B4ms" # was B2s; B1ms uses 1 vCPU
+  description = "VM size for the system node pool"
+  type        = string
+  default     = "Standard_B4ms"
 }
 
 variable "desired_capacity" {
-  type    = number
-  default = 1
+  description = "Initial node count for system pool (can be autoscaled)"
+  type        = number
+  default     = 1
 }
 
 variable "min_size" {
-  type    = number
-  default = 1
+  description = "Minimum nodes for system autoscaler"
+  type        = number
+  default     = 1
 }
 
 variable "max_size" {
-  type    = number
-  default = 1
+  description = "Maximum nodes for system autoscaler"
+  type        = number
+  default     = 1
 }
 
 variable "sku_tier" {
-  type    = string
-  default = "Free" # or "Paid"
+  description = "AKS SKU tier (Free/Paid)"
+  type        = string
+  default     = "Free"
 }
 
 variable "oidc_issuer_enabled" {
-  type    = bool
-  default = true
+  description = "Enable OIDC / workload identity"
+  type        = bool
+  default     = true
 }
 
-# Toggle a dedicated User pool later (kept commented in aks.tf by default)
 variable "enable_user_pool" {
-  type    = bool
-  default = false
+  description = "Create a separate user node pool for workloads"
+  type        = bool
+  default     = false
 }
 
 variable "user_node_vm_size" {
-  type    = string
-  default = "Standard_B1ms"
+  description = "VM size for the optional user node pool"
+  type        = string
+  default     = "Standard_B1ms"
 }
 
 variable "user_desired_capacity" {
-  type    = number
-  default = 0
+  description = "Initial desired nodes for user pool"
+  type        = number
+  default     = 0
 }
 
 variable "user_min_size" {
-  type    = number
-  default = 0
+  description = "Minimum for user pool autoscaler"
+  type        = number
+  default     = 0
 }
 
 variable "user_max_size" {
-  type    = number
-  default = 1
+  description = "Maximum for user pool autoscaler"
+  type        = number
+  default     = 1
 }
 
 ################################
@@ -111,13 +144,15 @@ variable "user_max_size" {
 ################################
 
 variable "acr_name" {
-  type    = string
-  default = null
+  description = "Optional ACR name (must be globally unique, lowercase, alphanumeric, no dashes). If null, a local will compute a safe fallback."
+  type        = string
+  default     = null
 }
 
 variable "acr_sku" {
-  type    = string
-  default = "Basic"
+  description = "ACR SKU (Basic, Standard, Premium)"
+  type        = string
+  default     = "Basic"
 }
 
 ################################
@@ -125,18 +160,21 @@ variable "acr_sku" {
 ################################
 
 variable "nodejs_docker_image" {
-  type    = string
-  default = null
+  description = "NodeJS image reference (optional)"
+  type        = string
+  default     = null
 }
 
 variable "mini_budget_tracker_image" {
-  type    = string
-  default = null
+  description = "Mini budget tracker image reference (optional)"
+  type        = string
+  default     = null
 }
 
 variable "retro_arcade_docker_image" {
-  type    = string
-  default = null
+  description = "Retro arcade image reference (optional)"
+  type        = string
+  default     = null
 }
 
 variable "nginx_replicas" {
@@ -210,22 +248,13 @@ variable "authorized_ip_ranges" {
 ################################
 
 variable "service_cidr" {
-  type    = string
-  default = "10.2.0.0/16"
-
-  validation {
-    condition     = can(cidrnetmask(var.service_cidr))
-    error_message = "service_cidr must be a valid CIDR."
-  }
+  description = "Cluster service CIDR"
+  type        = string
+  default     = "10.2.0.0/16"
 }
 
 variable "dns_service_ip" {
-  type    = string
-  default = "10.2.0.10"
-
-  # IP format check (no cross-var refs)
-  validation {
-    condition     = can(cidrhost(format("%s/32", var.dns_service_ip), 0))
-    error_message = "dns_service_ip must be a valid IPv4 address."
-  }
+  description = "Cluster DNS service IP"
+  type        = string
+  default     = "10.2.0.10"
 }

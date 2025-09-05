@@ -1,7 +1,7 @@
 resource "azurerm_container_registry" "acr" {
-  name                = lower(coalesce(var.acr_name, replace("${var.cluster_name}${var.environment}", "/[^a-zA-Z0-9]/", "")))
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
+  name                = local.acr_name
+  resource_group_name = local.rg_name
+  location            = var.location
   sku                 = var.acr_sku
   admin_enabled       = false
 
