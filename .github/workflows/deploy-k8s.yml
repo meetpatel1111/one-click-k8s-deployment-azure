@@ -279,19 +279,22 @@ jobs:
           # 1) Delete any existing LimitRanges that might block admission
           kubectl -n kube-system get limitrange -o name | xargs -r kubectl -n kube-system delete || true
 
-          # 2) Deploy upstream metrics-server (RBAC, Service, APIService, Deployment, etc.)
+          # 2) Deploy upstream metrics-server
           kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
-          # 3) Patch the metrics-server deployment with custom resources
+          # 3) Wait until the deployment exists (give time for creation)
+          kubectl -n kube-system rollout status deployment/metrics-server --timeout=60s || true
+
+          # 4) Patch the metrics-server deployment with custom resources
           kubectl -n kube-system set resources deployment metrics-server \
             --containers=metrics-server \
             --requests=memory=64Mi \
             --limits=memory=104Mi
 
-          # 4) Restart and wait for rollout
+          # 5) Restart and wait for rollout
           kubectl -n kube-system rollout restart deploy/metrics-server || true
           kubectl -n kube-system rollout status deploy/metrics-server --timeout=300s
-
+          
       - name: Export replicas and HPA settings from TFVARS
         run: |
           ENVFILE="${TF_DIR}/${TFVARS_FILE}"
