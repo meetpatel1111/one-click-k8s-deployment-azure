@@ -24,7 +24,7 @@ authorized_ip_ranges = []
 acr_name = null
 acr_sku  = "Basic"
 
-# Images (if you publish to ACR, replace acrdevjm with your ACR or leave as-is)
+# Images (if you publish to ACR, replace acrnpusetest with your ACR or leave as-is)
 nodejs_docker_image       = "acrnpusetest.azurecr.io/nodejs-app:latest"
 mini_budget_tracker_image = "acrnpusetest.azurecr.io/mini-budget:latest"
 retro_arcade_docker_image = "acrnpusetest.azurecr.io/retro-arcade-galaxy:latest"

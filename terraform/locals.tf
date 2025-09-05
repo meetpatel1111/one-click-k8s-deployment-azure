@@ -28,7 +28,7 @@ locals {
   log_analytics_name  = "law-${local.resource_prefix}"
   aks_diagnostic_name = "diag-${local.aks_name}"
 
-  # Human-friendly ACR display name following your convention:
+  # Human-friendly ACR display name:
   acr_display_name = "acr-${local.resource_prefix}" # e.g. "acr-np-use-dev"
 
   # Actual ACR resource name must be lowercase, alphanumeric, no dashes:

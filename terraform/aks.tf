@@ -45,7 +45,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     load_balancer_sku = "standard"
     outbound_type     = "loadBalancer"
 
-    # Must not overlap with your VNet/subnets
+    # Must not overlap with VNet/subnets
     service_cidr   = var.service_cidr
     dns_service_ip = var.dns_service_ip
   }
