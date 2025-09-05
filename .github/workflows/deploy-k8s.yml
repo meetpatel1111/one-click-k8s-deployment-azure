@@ -272,47 +272,24 @@ jobs:
           severity: 'CRITICAL,HIGH'
           github-pat: ${{ secrets.GH_PAT }}
 
-      - name: Install Metrics Server (safe LimitRange + admission check)
+      - name: Install Metrics Server (with custom resources)
         run: |
           set -euo pipefail
 
           # 1) Delete any existing LimitRanges that might block admission
           kubectl -n kube-system get limitrange -o name | xargs -r kubectl -n kube-system delete || true
 
-          # 2) Apply the LimitRange manifest
-          kubectl -n kube-system apply -f k8s/kube-system-limitrange.yaml
-
-          # 3) Wait until LimitRange exists
-          for i in {1..30}; do
-            if kubectl -n kube-system get limitrange kube-system-defaults >/dev/null 2>&1; then
-              echo "LimitRange present"; break
-            fi
-            echo "Waiting for LimitRange... ($i/30)"; sleep 1
-          done
-
-          # 4) Apply test pod to verify admission accepts requests
-          for i in {1..30}; do
-            kubectl -n kube-system delete pod metrics-admit-test --ignore-not-found=true
-            if kubectl -n kube-system apply -f k8s/metrics-admit-test.yaml >/dev/null 2>&1; then
-              sleep 2
-              if kubectl -n kube-system get pod metrics-admit-test >/dev/null 2>&1; then
-                echo "Admission accepts 200Mi requests — proceeding"
-                kubectl -n kube-system delete pod metrics-admit-test --wait --ignore-not-found=true || true
-                break
-              fi
-            fi
-            echo "Admission not ready yet; retrying ($i/30)..." ; sleep 2
-            if [ "$i" -eq 30 ]; then
-              echo "Timed out waiting for admission to accept test pod" >&2
-              kubectl -n kube-system get limitrange -o yaml || true
-              exit 1
-            fi
-          done
-
-          # 5) Deploy upstream metrics-server
+          # 2) Deploy upstream metrics-server (RBAC, Service, APIService, Deployment, etc.)
           kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
-          # 6) Wait for rollout
+          # 3) Patch the metrics-server deployment with custom resources
+          kubectl -n kube-system set resources deployment metrics-server \
+            --containers=metrics-server \
+            --requests=memory=64Mi \
+            --limits=memory=104Mi
+
+          # 4) Restart and wait for rollout
+          kubectl -n kube-system rollout restart deploy/metrics-server || true
           kubectl -n kube-system rollout status deploy/metrics-server --timeout=300s
 
       - name: Export replicas and HPA settings from TFVARS
