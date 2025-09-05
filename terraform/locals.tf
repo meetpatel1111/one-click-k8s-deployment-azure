@@ -12,8 +12,9 @@ locals {
   # Cluster (dashed name for human-friendly resources)
   aks_name = coalesce(var.cluster_name, "aks-${local.resource_prefix}")
 
-  # DNS prefix must be a valid DNS name (lowercase, numbers, hyphen). Remove invalid chars.
-  aks_dns_prefix = lower(regexreplace(local.aks_name, "[^a-z0-9-]", ""))
+  # DNS prefix must be a valid DNS name (lowercase, numbers, hyphen).
+  # Keep only allowed chars by extracting matches and joining them.
+  aks_dns_prefix = join("", regexall("[a-z0-9-]", lower(local.aks_name)))
 
   # Nodepool names: system (System-mode), default (User-mode)
   system_nodepool_name = "system"
