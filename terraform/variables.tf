@@ -258,3 +258,40 @@ variable "dns_service_ip" {
   type        = string
   default     = "10.2.0.10"
 }
+
+################################
+# Network / NSG helper variables
+################################
+
+variable "health_check_node_port" {
+  description = "Azure LB health probe nodePort. Must match Service.spec.healthCheckNodePort for LoadBalancer services (e.g. ingress controller)."
+  type        = number
+  default     = 31593
+}
+
+variable "nodeport_range" {
+  description = "NodePort range as a single string used in destination_port_ranges (e.g. \"30000-32767\")."
+  type        = string
+  default     = "30000-32767"
+}
+
+# Terraform will create the Allow-HTTP-HTTPS-From-MyCIDR rule only when this list is non-empty.
+# If you want Terraform to manage a single rule that allows Internet, use ["Internet"] here.
+# If you want it locked down by default, keep this empty and add your CIDR(s) in terraform.tfvars.
+variable "allowed_client_cidrs" {
+  description = "List of CIDRs allowed to access HTTP/HTTPS on nodes. Terraform will use the first entry to create the single rule Allow-HTTP-HTTPS-From-MyCIDR. Keep empty to not create the rule."
+  type        = list(string)
+  default     = ["Internet"]
+}
+
+variable "allow_nodeports_from_internet" {
+  description = "If true, create an NSG rule allowing NodePort range from Internet (not recommended for production)."
+  type        = bool
+  default     = true
+}
+
+variable "ssh_allowed_cidrs" {
+  description = "List of CIDRs allowed to SSH to nodes. Empty list = no SSH rule created."
+  type        = list(string)
+  default     = []
+}

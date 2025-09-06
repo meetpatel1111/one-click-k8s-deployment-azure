@@ -1,39 +1,153 @@
-################################
-# Locals for naming convention
-################################
+###############################################################################
+# network.tf
+# VNet, subnets, NSG (single HTTP/HTTPS rule named Allow-HTTP-HTTPS-From-MyCIDR)
+# Uses locals from your locals.tf (vnet_name, system_subnet_name, user_subnet_name, nsg_name)
+###############################################################################
 
-locals {
-  # Core prefix: {envtype}-{short_location}-{environment}  (example: np-use-dev)
-  resource_prefix = "${var.environment_type}-${var.short_location}-${var.environment}"
+resource "azurerm_virtual_network" "vnet" {
+  name                = local.vnet_name
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  address_space       = [var.vnet_cidr]
 
-  # Resource Group (fallback to computed name if var set to null)
-  rg_name = coalesce(var.resource_group_name, "rg-${local.resource_prefix}")
+  tags = {
+    environment = var.environment
+  }
+}
 
-  # Cluster (dashed name for human-friendly resources)
-  aks_name = coalesce(var.cluster_name, "aks-${local.resource_prefix}")
+resource "azurerm_subnet" "system" {
+  name                 = local.system_subnet_name
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = [var.system_subnet_cidr]
+}
 
-  # DNS prefix must be a valid DNS name (lowercase, numbers, hyphen).
-  # Keep only allowed chars by extracting matches and joining them.
-  aks_dns_prefix = join("", regexall("[a-z0-9-]", lower(local.aks_name)))
+resource "azurerm_subnet" "user" {
+  name                 = local.user_subnet_name
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = [var.user_subnet_cidr]
+}
 
-  # Nodepool names: system (System-mode), default (User-mode)
-  system_nodepool_name = "system"
-  user_nodepool_name   = "default"
+resource "azurerm_network_security_group" "aks" {
+  name                = local.nsg_name
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
 
-  # VNet / Subnet / NSG / Log Analytics / Diagnostic names
-  vnet_name           = "vnet-${local.resource_prefix}"
-  system_subnet_name  = "snet-system-${local.resource_prefix}"
-  user_subnet_name    = "snet-user-${local.resource_prefix}"
-  nsg_name            = "nsg-aks-${local.resource_prefix}"
-  log_analytics_name  = "law-${local.resource_prefix}"
-  aks_diagnostic_name = "diag-${local.aks_name}"
+  # 1) ALLOW: Azure Load Balancer health probe -> specific node health port
+  security_rule {
+    name                       = "Allow-AzureLB-HealthProbe"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_ranges    = [tostring(var.health_check_node_port)]
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_address_prefix = "*"
+    description                = "Allow Azure Load Balancer health probes to node health-check port"
+  }
 
-  # Human-friendly ACR display name:
-  acr_display_name = "acr-${local.resource_prefix}" # e.g. "acr-np-use-dev"
+  # 2) ALLOW: AzureLoadBalancer -> NodePort range (so LB can forward NodePort traffic)
+  security_rule {
+    name                       = "Allow-AzureLB-NodePortRange"
+    priority                   = 105
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_ranges    = [var.nodeport_range]
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_address_prefix = "*"
+    description                = "Allow AzureLoadBalancer to reach NodePort range"
+  }
 
-  # Actual ACR resource name must be lowercase, alphanumeric, no dashes:
-  acr_name = lower(replace(local.acr_display_name, "-", ""))
+  # 3) SINGLE RULE: HTTP/HTTPS from the first configured CIDR
+  security_rule {
+    count                      = length(var.allowed_client_cidrs) > 0 ? 1 : 0
+    name                       = "Allow-HTTP-HTTPS-From-MyCIDR"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_ranges    = ["80", "443"]
+    source_address_prefix      = var.allowed_client_cidrs[0]
+    destination_address_prefix = "*"
+    description                = "Allow HTTP/HTTPS from configured CIDR (first entry)"
+  }
 
-  # Short dashless helper for storage-like resources that can't have hyphens.
-  dashless_resource_prefix = replace(local.resource_prefix, "-", "")
+  # 4) OPTIONAL: Allow NodePort range from Internet (create only if requested)
+  security_rule {
+    count                      = var.allow_nodeports_from_internet ? 1 : 0
+    name                       = "Allow-NodePorts-From-Internet"
+    priority                   = 200
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_ranges    = [var.nodeport_range]
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "*"
+    description                = "Allow NodePorts from Internet (optional)"
+  }
+
+  # 5) OPTIONAL: Per-CIDR SSH allow rules (if any)
+  dynamic "ssh_rule" {
+    for_each = length(var.ssh_allowed_cidrs) > 0 ? var.ssh_allowed_cidrs : []
+    content {
+      name                       = "Allow-SSH-From-${replace(ssh_rule.value, "/", "-")}"
+      priority                   = 300 + index(var.ssh_allowed_cidrs, ssh_rule.value)
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_address_prefix      = ssh_rule.value
+      source_port_range          = "*"
+      destination_port_range     = "22"
+      destination_address_prefix = "*"
+      description                = "Allow SSH from ${ssh_rule.value}"
+    }
+  }
+
+  # 6) Egress: allow HTTPS outbound
+  security_rule {
+    name                       = "Allow-HTTPS-Outbound"
+    priority                   = 1000
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+    description                = "Allow outbound HTTPS"
+  }
+
+  # Commented block: allow HTTP/HTTPS from Internet (uncomment to enable)
+  # security_rule {
+  #   name                       = "Allow-HTTP-HTTPS-From-Internet"
+  #   priority                   = 130
+  #   direction                  = "Inbound"
+  #   access                     = "Allow"
+  #   protocol                   = "Tcp"
+  #   source_port_range          = "*"
+  #   destination_port_ranges    = ["80", "443"]
+  #   source_address_prefix      = "Internet"
+  #   destination_address_prefix = "*"
+  #   description                = "Allow HTTP/HTTPS from Internet (uncomment to enable)"
+  # }
+
+  tags = {
+    environment = var.environment
+  }
+}
+
+resource "azurerm_subnet_network_security_group_association" "system" {
+  subnet_id                 = azurerm_subnet.system.id
+  network_security_group_id = azurerm_network_security_group.aks.id
+}
+
+resource "azurerm_subnet_network_security_group_association" "user" {
+  subnet_id                 = azurerm_subnet.user.id
+  network_security_group_id = azurerm_network_security_group.aks.id
 }
