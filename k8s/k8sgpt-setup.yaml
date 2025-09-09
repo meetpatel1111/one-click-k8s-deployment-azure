@@ -1,99 +1,127 @@
----
+# ---
+# apiVersion: v1
+# kind: ServiceAccount
+# metadata:
+#   name: k8sgpt-analyzer
+#   namespace: default
+
+# ---
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRole
+# metadata:
+#   name: k8sgpt-read-all
+# rules:
+#   # Core
+#   - apiGroups: [""]
+#     resources:
+#       - pods
+#       - pods/log         # for Log filter
+#       - services
+#       - endpoints
+#       - events
+#       - configmaps
+#       - nodes
+#       - namespaces
+#       - persistentvolumes
+#       - persistentvolumeclaims
+#     verbs: ["get","list","watch"]
+
+#   # Workloads
+#   - apiGroups: ["apps"]
+#     resources: ["deployments","replicasets","statefulsets","daemonsets"]
+#     verbs: ["get","list","watch"]
+#   - apiGroups: ["batch"]
+#     resources: ["jobs","cronjobs"]
+#     verbs: ["get","list","watch"]
+#   - apiGroups: ["autoscaling"]
+#     resources: ["horizontalpodautoscalers"]
+#     verbs: ["get","list","watch"]
+
+#   # Policy / Disruption budgets
+#   - apiGroups: ["policy"]
+#     resources: ["poddisruptionbudgets"]
+#     verbs: ["get","list","watch"]
+#   # (Optional/legacy) PSP – if your cluster still has it
+#   - apiGroups: ["policy"]
+#     resources: ["podsecuritypolicies"]
+#     verbs: ["get","list","watch"]
+
+#   # Networking (Ingress + NetworkPolicy)
+#   - apiGroups: ["networking.k8s.io"]
+#     resources: ["ingresses","networkpolicies","ingressclasses"]
+#     verbs: ["get","list","watch"]
+
+#   # Admission webhooks
+#   - apiGroups: ["admissionregistration.k8s.io"]
+#     resources: ["mutatingwebhookconfigurations","validatingwebhookconfigurations"]
+#     verbs: ["get","list","watch"]
+
+#   # Gateway API (for Gateway, HTTPRoute, GatewayClass, etc.)
+#   - apiGroups: ["gateway.networking.k8s.io"]
+#     resources:
+#       - gateways
+#       - gatewayclasses
+#       - httproutes
+#       - grpcroutes
+#       - tlsroutes
+#       - tcproutes
+#       - udproutes
+#       - referencegrants
+#     verbs: ["get","list","watch"]
+
+#   # Storage (for Storage filter)
+#   - apiGroups: ["storage.k8s.io"]
+#     resources:
+#       - storageclasses
+#       - csidrivers
+#       - csinodes
+#       - csistoragecapacities
+#       - volumeattachments
+#     verbs: ["get","list","watch"]
+
+#   # Operator Lifecycle Manager (OLM) – for CSV/Subscription/etc.
+#   - apiGroups: ["operators.coreos.com"]
+#     resources:
+#       - clusterserviceversions
+#       - catalogsources
+#       - operatorgroups
+#       - subscriptions
+#       - installplans
+#     verbs: ["get","list","watch"]
+
+#   # (Optional) Generic CRDs if some filters rely on custom resources you install later
+#   - apiGroups: ["apiextensions.k8s.io"]
+#     resources: ["customresourcedefinitions"]
+#     verbs: ["get","list","watch"]
+
+# ---
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRoleBinding
+# metadata:
+#   name: k8sgpt-read-all-binding
+# roleRef:
+#   apiGroup: rbac.authorization.k8s.io
+#   kind: ClusterRole
+#   name: k8sgpt-read-all
+# subjects:
+#   - kind: ServiceAccount
+#     name: k8sgpt-analyzer
+#     namespace: default
+
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: k8sgpt-analyzer
   namespace: default
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: k8sgpt-read-all
 rules:
-  # Core
-  - apiGroups: [""]
-    resources:
-      - pods
-      - pods/log         # for Log filter
-      - services
-      - endpoints
-      - events
-      - configmaps
-      - nodes
-      - namespaces
-      - persistentvolumes
-      - persistentvolumeclaims
-    verbs: ["get","list","watch"]
-
-  # Workloads
-  - apiGroups: ["apps"]
-    resources: ["deployments","replicasets","statefulsets","daemonsets"]
-    verbs: ["get","list","watch"]
-  - apiGroups: ["batch"]
-    resources: ["jobs","cronjobs"]
-    verbs: ["get","list","watch"]
-  - apiGroups: ["autoscaling"]
-    resources: ["horizontalpodautoscalers"]
-    verbs: ["get","list","watch"]
-
-  # Policy / Disruption budgets
-  - apiGroups: ["policy"]
-    resources: ["poddisruptionbudgets"]
-    verbs: ["get","list","watch"]
-  # (Optional/legacy) PSP – if your cluster still has it
-  - apiGroups: ["policy"]
-    resources: ["podsecuritypolicies"]
-    verbs: ["get","list","watch"]
-
-  # Networking (Ingress + NetworkPolicy)
-  - apiGroups: ["networking.k8s.io"]
-    resources: ["ingresses","networkpolicies"]
-    verbs: ["get","list","watch"]
-
-  # Admission webhooks
-  - apiGroups: ["admissionregistration.k8s.io"]
-    resources: ["mutatingwebhookconfigurations","validatingwebhookconfigurations"]
-    verbs: ["get","list","watch"]
-
-  # Gateway API (for Gateway, HTTPRoute, GatewayClass, etc.)
-  - apiGroups: ["gateway.networking.k8s.io"]
-    resources:
-      - gateways
-      - gatewayclasses
-      - httproutes
-      - grpcroutes
-      - tlsroutes
-      - tcproutes
-      - udproutes
-      - referencegrants
-    verbs: ["get","list","watch"]
-
-  # Storage (for Storage filter)
-  - apiGroups: ["storage.k8s.io"]
-    resources:
-      - storageclasses
-      - csidrivers
-      - csinodes
-      - csistoragecapacities
-      - volumeattachments
-    verbs: ["get","list","watch"]
-
-  # Operator Lifecycle Manager (OLM) – for CSV/Subscription/etc.
-  - apiGroups: ["operators.coreos.com"]
-    resources:
-      - clusterserviceversions
-      - catalogsources
-      - operatorgroups
-      - subscriptions
-      - installplans
-    verbs: ["get","list","watch"]
-
-  # (Optional) Generic CRDs if some filters rely on custom resources you install later
-  - apiGroups: ["apiextensions.k8s.io"]
-    resources: ["customresourcedefinitions"]
-    verbs: ["get","list","watch"]
-
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
