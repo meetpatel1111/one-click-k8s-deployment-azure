@@ -26,10 +26,16 @@ on:
 
 env:
   TF_DIR: terraform
-  # Shared backend settings (same for all environments)
-  BACKEND_RG: tfstate-shared-rg        # <-- update to your existing RG
-  BACKEND_SA: sttfstateshared          # <-- fixed shared Storage Account name
-  BACKEND_CONTAINER: tfstate           # <-- existing container in that SA
+  # Shared backend (same RG/SA/container for all envs)
+  BACKEND_RG: tfstate-shared-rg
+  BACKEND_SA: sttfstateshared
+  BACKEND_CONTAINER: tfstate
+  ARM_CLIENT_ID:       ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+  ARM_CLIENT_SECRET:   ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
+  ARM_TENANT_ID:       ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+  ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
 
 jobs:
   delete-k8s-apps:
