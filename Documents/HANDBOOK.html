@@ -1,123 +1,33 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>One-Click K8s Deployment — Full Handbook</title>
-  <style>
-    body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; padding: 24px; max-width: 980px; margin: auto; }
-    pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    pre { background: #f6f8fa; padding: 12px; overflow: auto; border-radius: 6px; }
-    h1, h2, h3 { line-height: 1.25; }
-    hr { border: 0; border-top: 1px solid #eaecef; margin: 24px 0; }
-    .toc { background:#fafbfc; border:1px solid #eaecef; padding:12px 16px; border-radius:6px; }
-    a { color: #0969da; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>HANDBOOK (raw)</title>
+<style>
+body { font-family: monospace; padding:1rem; background:#fff; color:#111; }
+pre { white-space: pre-wrap; word-wrap: break-word; }
+</style>
 </head>
 <body>
-<pre># One-Click K8s Deployment — Full Handbook
+<pre># HANDBOOK — Combined Documentation
 
-_Generated: 2025-08-29 09:53:42_
+This handbook combines multiple detailed documentation files into a single reference.
 
-## Table of Contents
-- [README.md](#readmemd)
-- [DOCUMENTATION.md](#documentationmd)
-- [DEPLOYMENT.md](#deploymentmd)
-- [WORKFLOW_DETAILED.md](#workflow_detailedmd)
-- [TERRAFORM_DETAILED.md](#terraform_detailedmd)
-- [KUBERNETES_DETAILED.md](#kubernetes_detailedmd)
-- [GITHUBACTIONS_DETAILED.md](#githubactions_detailedmd)
-- [DELETE_WORKFLOW_DETAILED.md](#delete_workflow_detailedmd)
-- [BEST_PRACTICES.md](#best_practicesmd)
-
-# README.md
-
-# Dynamic Reusable K8s Cluster with Networking + Apps + k8sGPT
-
-Steps:
-
-1. Customize terraform/terraform.tfvars
-2. Build Node.js Docker image:
-```bash
-cd apps/nodejs-app
-docker build -t &lt;YOUR_DOCKER_USERNAME&gt;/nodejs-app:latest .
-docker push &lt;YOUR_DOCKER_USERNAME&gt;/nodejs-app:latest
-```
-3. Apply Terraform:
-```bash
-cd terraform
-terraform init
-terraform apply -auto-approve
-```
-4. Access:
-- Node.js App: http://&lt;node-public-lb-ip&gt;:3000
-- NGINX: http://&lt;node-public-lb-ip&gt;
-- k8sGPT: http://&lt;k8sgpt-lb-ip&gt;
-
+Included sources:
+- README.md
+- DOCUMENTATION.md
+- DEPLOYMENT.md
+- WORKFLOW_DETAILED.md
+- TERRAFORM_DETAILED.md
+- KUBERNETES_DETAILED.md
+- GITHUBACTIONS_DETAILED.md
+- DELETE_WORKFLOW_DETAILED.md
+- BEST_PRACTICES.md
 
 ---
 
-## 📘 Extended Project Overview
-
-This repository is a **fully automated Kubernetes deployment solution** that combines:
-
-- **Terraform** for provisioning cloud infrastructure (networking, cluster, nodes)
-- **GitHub Actions** for CI/CD automation and parameterized workflows
-- **Kubernetes** manifests and Helm for application deployment
-- **Security Scans** integrated directly into the pipeline
-
-### Key Workflows
-- **One-Click K8s Deployment (`deploy-k8s.yml`)**
-  - Provides parameterized infra + app deployments with granular control
-- **Delete Applications (`delete-k8s-applications.yml`)**
-  - Allows selective removal of apps from the cluster safely
-
-### Supported Applications
-- Node.js Web Application (served on LoadBalancer)
-- NGINX Web Server
-- k8sGPT (AI diagnostics using Google or OpenAI provider)
-
-### Usage Flow
-1. **Build and push app images** to DockerHub or your registry
-2. **Run GitHub Action** with appropriate parameters (choose environment, action, provider, etc.)
-3. **Access apps** via public LoadBalancer endpoints
-4. **Optionally delete apps** via the controlled delete workflow
-
----
-
-## 📊 Parameters and Variables
-
-### Deployment Workflow Inputs
-- **environment** → Target environment (`dev` / `test`)
-- **action** → Terraform action (`apply`, `destroy`, `refresh`)
-- **provider** → AI provider for k8sGPT (`google`, `openai`)
-- **run_security_scan** → Boolean flag to run only security scans
-- **run_terraform** → Boolean flag to enable infra provisioning
-- **run_application_deployment** → Boolean flag to deploy Kubernetes apps
-
-### Environment Variables &amp; Secrets
-- **DOCKER_USERNAME / DOCKER_PASSWORD** → For pulling/pushing container images
-- **AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY** → For Terraform infra creation (AWS provider)
-
-### Deletion Workflow Inputs
-- **environment** → Target environment
-- **dry_run** → Boolean, simulates deletions
-- **apps_to_delete** → Comma-separated list of apps
-- **confirm** → Must be `true` to allow actual deletion
-
----
-
-## 📄 Extended Access Instructions
-
-- **Node.js App**: `http://&lt;node-lb-ip&gt;:3000`
-- **NGINX**: `http://&lt;node-lb-ip&gt;`
-- **k8sGPT**: `http://&lt;k8sgpt-lb-ip&gt;`
-
----
-
-
-# DOCUMENTATION.md
+# Source: DOCUMENTATION.md
 
 # 📘 One-Click Kubernetes Deployment Documentation
 
@@ -306,8 +216,33 @@ It is **manually triggered** and requires confirmation for safety.
 
 ---
 
+## 📑 Documentation Navigation
 
-# DEPLOYMENT.md
+- [README.md](../README.md) – Root project overview  
+- [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
+- [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation (~400 lines)  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive (~400 lines)  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment (~400 lines)  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation (~400 lines)  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow (~400 lines)  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance (~400 lines)  
+- [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
+
+🔗 Extras:  
+- [HANDBOOK.html](./HANDBOOK.html) – Web-friendly version  
+- [HANDBOOK_QUICKSTART.pdf](./HANDBOOK_QUICKSTART.pdf) – Quickstart summary (2–3 pages)  
+- [HANDBOOK_CHEATSHEET.pdf](./HANDBOOK_CHEATSHEET.pdf) – 1-page cheatsheet  
+- [HANDBOOK_CHEATSHEET_GRAPHICAL.pdf](./HANDBOOK_CHEATSHEET_GRAPHICAL.pdf) – Visual cheatsheet with diagram  
+- [HANDBOOK_FULL_PRESENTATION.pptx](./HANDBOOK_FULL_PRESENTATION.pptx) – Technical slide deck  
+- [HANDBOOK_EXECUTIVE_PRESENTATION.pptx](./HANDBOOK_EXECUTIVE_PRESENTATION.pptx) – Executive-friendly deck  
+
+---
+
+
+---
+
+# Source: DEPLOYMENT.md
 
 # 🚀 Kubernetes Deployment Guide (DEPLOYMENT.md)
 
@@ -328,9 +263,10 @@ This guide explains **how deployment works in all parameter combinations**, mapp
 - Parameters: `run_security_scan=false`, `run_terraform=true`, `run_application_deployment=false`
 - Steps:
   1. Checkout repo
-  2. Setup Terraform
-  3. Run `terraform &lt;action&gt;`
-     - If `action=apply` → Creates cluster + networking
+  2. Azure login (`AZURE_CREDENTIALS`)
+  3. Setup Terraform
+  4. Run `terraform &lt;action&gt;`
+     - If `action=apply` → Creates **AKS cluster + ACR + VNet + Log Analytics**
      - If `action=destroy` → Deletes all infra
      - If `action=refresh` → Updates state only
 - Apps are **not deployed**
@@ -341,8 +277,9 @@ This guide explains **how deployment works in all parameter combinations**, mapp
 - Parameters: `run_security_scan=false`, `run_terraform=false`, `run_application_deployment=true`
 - Steps:
   1. Checkout repo
-  2. Setup kubectl (auth against cluster)
-  3. Deploy apps with `kubectl apply -f manifests/`:
+  2. Azure login (`AZURE_CREDENTIALS`)
+  3. Set kubectl context (`az aks get-credentials`)
+  4. Deploy apps with `kubectl apply -f manifests/`:
      - Node.js App
      - NGINX
      - k8sGPT (provider from `provider` input)
@@ -353,8 +290,10 @@ This guide explains **how deployment works in all parameter combinations**, mapp
 ## 🔹 Case 4: Full Deployment (Infra + Apps)
 - Parameters: `run_security_scan=false`, `run_terraform=true`, `run_application_deployment=true`, `action=apply`
 - Steps:
-  1. Terraform creates cluster/networking
-  2. Kubectl deploys applications
+  1. Azure login (`AZURE_CREDENTIALS`)
+  2. Terraform provisions **AKS + ACR + VNet + Log Analytics**
+  3. Set kubectl context (`az aks get-credentials`)
+  4. Kubectl deploys applications
 - Result: Complete environment ready
 
 ---
@@ -362,16 +301,18 @@ This guide explains **how deployment works in all parameter combinations**, mapp
 ## 🔹 Case 5: Destroy Mode
 - Parameters: `action=destroy`, `run_terraform=true`
 - Steps:
-  1. Terraform deletes cluster + networking
-  2. Apps removed automatically when infra is destroyed
+  1. Azure login (`AZURE_CREDENTIALS`)
+  2. Terraform deletes AKS + networking + ACR + monitoring
+  3. Apps removed automatically when infra is destroyed
 
 ---
 
 ## 🔹 Case 6: Refresh Mode
 - Parameters: `action=refresh`, `run_terraform=true`
 - Steps:
-  1. Terraform refreshes state
-  2. No changes to infra or apps
+  1. Azure login (`AZURE_CREDENTIALS`)
+  2. Terraform refreshes state
+  3. No changes to infra or apps
 
 ---
 
@@ -379,8 +320,10 @@ This guide explains **how deployment works in all parameter combinations**, mapp
 - Example: `run_security_scan=true`, `run_terraform=true`, `run_application_deployment=true`
 - Steps:
   1. Run scans
-  2. Provision infra
-  3. Deploy apps
+  2. Azure login (`AZURE_CREDENTIALS`)
+  3. Provision infra with Terraform
+  4. Set kubectl context (`az aks get-credentials`)
+  5. Deploy apps
 
 ---
 
@@ -408,40 +351,7 @@ This guide explains **how deployment works in all parameter combinations**, mapp
 
 ## 📊 Visual Decision Flows (Mermaid)
 
-&gt; These render natively on GitHub. If you view this in a tool that doesn't support Mermaid, copy the blocks below into a GitHub Markdown file.
-
-### Deployment Workflow (Detailed)
-
-
-### Delete Workflow (Detailed)
-
----
-
-## 📊 Visual Decision Flows (Mermaid)
-
-### Deployment Workflow (Detailed)
-
-
-
-### Delete Workflow (Detailed)
-
-
-
----
-
-## 📊 Visual Decision Flows (Mermaid)
-
-### Deployment Workflow (Detailed)
-
-
-
-### Delete Workflow (Detailed)
-
----
-
-## 📊 Visual Decision Flows (Mermaid)
-
-### Deployment Workflow (Detailed)
+### Deployment Workflow (Mermaid)
 
 ```mermaid
 flowchart TD
@@ -454,11 +364,11 @@ flowchart TD
     E -- No --&gt; H{Deploy Applications?}
     E -- Yes --&gt; F{Terraform Action?}
 
-    F -- apply --&gt; F1[Terraform APPLY - init/plan/apply]
-    F -- refresh --&gt; F2[Terraform REFRESH - state sync]
-    F -- destroy --&gt; F3[Terraform DESTROY - delete infra]
+    F -- apply --&gt; F1[Azure Login -&gt; Terraform APPLY (AKS + ACR + VNet + Log Analytics)]
+    F -- refresh --&gt; F2[Azure Login -&gt; Terraform REFRESH - state sync]
+    F -- destroy --&gt; F3[Azure Login -&gt; Terraform DESTROY - delete infra]
 
-    F1 --&gt; H
+    F1 --&gt; G[Set kubectl context via az aks get-credentials]
     F2 --&gt; H
     F3 --&gt; H
 
@@ -469,7 +379,7 @@ flowchart TD
     J --&gt; Z[End]
 ```
 
-### Delete Workflow (Detailed)
+### Delete Workflow (Mermaid)
 
 ```mermaid
 flowchart TD
@@ -488,274 +398,311 @@ flowchart TD
     H --&gt; Z
 ```
 
+### HPA Fortio Stress Test Workflow (Mermaid)
+
+```mermaid
+flowchart TD
+  A[&quot;Start: Manual Trigger&quot;] --&gt; B[&quot;Azure Login (AZURE_CREDENTIALS)&quot;]
+  B --&gt; C[&quot;Set kubectl context (az aks get-credentials)&quot;]
+  C --&gt; D{&quot;Service Exists?&quot;}
+  D --&gt;|No| E[&quot;Abort: Service not found&quot;]
+  D --&gt;|Yes| F[&quot;Deploy Fortio Job/Pod&quot;]
+  F --&gt; G[&quot;Execute Fortio load (QPS, duration)&quot;]
+  G --&gt; H[&quot;Monitor HPA &amp; Pods&quot;]
+  H --&gt; I{&quot;Scale-Up Observed?&quot;}
+  I --&gt;|Yes| J[&quot;Wait for Pods Running &amp; Node Provisioning if needed&quot;]
+  I --&gt;|No| K[&quot;Record no-scale event&quot;]
+  J --&gt; L[&quot;Observe stabilization window and scale-down&quot;]
+  K --&gt; L
+  L --&gt; M[&quot;Collect logs &amp; results&quot;]
+  M --&gt; N[&quot;Cleanup Fortio artifacts&quot;]
+  N --&gt; Z[&quot;End&quot;]
+```
 
 ---
 
-## 🔎 Expanded Deployment Case Explanations
+## 🔎 Workflow Explanations
 
-### Case 1: Security Scan Only
-- Parameters:
-  - `run_security_scan=true`
-  - `run_terraform=false`
-  - `run_application_deployment=false`
-- Effect:
-  - Runs static/dynamic scans only
-  - No infra/app deployment
+### 1. Deployment Workflow (Detailed Explanation)
+The deployment workflow is the **main entrypoint** for provisioning infrastructure and deploying apps.  
+It supports all parameter combinations (`run_security_scan`, `run_terraform`, `run_application_deployment`, `action`).  
 
-### Case 2: Terraform Only
-- Parameters:
-  - `run_security_scan=false`
-  - `run_terraform=true`
-  - `run_application_deployment=false`
-- Effect:
-  - Provisions infra only
-  - No apps deployed
+- **Inputs**: environment, action (apply/destroy/refresh), flags for scan/deploy.  
+- **Infra provisioning**: Terraform creates AKS, ACR, VNet, Log Analytics.  
+- **App deployment**: kubectl applies manifests for Node.js, NGINX, k8sGPT.  
+- **Mixed mode**: allows combining security scan + infra + apps.  
 
-### Case 3: Application Deployment Only
-- Parameters:
-  - `run_security_scan=false`
-  - `run_terraform=false`
-  - `run_application_deployment=true`
-- Effect:
-  - Assumes infra exists
-  - Deploys apps to cluster
-
-### Case 4: Full Deployment
-- Parameters:
-  - `run_security_scan=false`
-  - `run_terraform=true`
-  - `run_application_deployment=true`
-  - `action=apply`
-- Effect:
-  - Full infra + app deploy
-
-### Case 5: Destroy
-- Parameters:
-  - `action=destroy`
-  - `run_terraform=true`
-- Effect:
-  - Deletes infra and apps
-
-### Case 6: Refresh
-- Parameters:
-  - `action=refresh`
-  - `run_terraform=true`
-- Effect:
-  - Updates state only
-
-### Case 7: Mixed
-- Parameters:
-  - All true
-- Effect:
-  - Runs scans + infra + apps
+**Outcome**: An environment (dev/test) is ready with infra + apps as requested.
 
 ---
 
-## 🛠️ Step Mapping
+### 2. Delete Workflow (Detailed Explanation)
+The delete workflow safely handles app removal.  
 
-| Step | Runs When | Details |
-|------|-----------|---------|
-| Security Scan | run_security_scan=true | Scans IaC, containers |
-| Terraform Init/Plan | run_terraform=true | Prepares infra state |
-| Terraform Apply | action=apply | Provisions infra |
-| Terraform Refresh | action=refresh | Sync state |
-| Terraform Destroy | action=destroy | Remove infra |
-| App Deployment | run_application_deployment=true | Deploys Node.js, NGINX, k8sGPT |
+- **Inputs**: `dry_run`, `confirm`.  
+- **Modes**:  
+  - Dry Run: Lists apps that would be deleted.  
+  - Confirmed: Deletes apps with `kubectl delete`.  
+  - Invalid: No action if confirm is false.  
+
+**Outcome**: Prevents accidental deletions while allowing explicit cleanup.
+
+---
+
+### 3. HPA Fortio Stress Test Workflow (Detailed Explanation)
+This workflow runs **Fortio load tests** to validate Horizontal Pod Autoscaler (HPA) on AKS.  
+
+- **Inputs**: cluster_name, resource_group, namespace, service_name, service_port, qps, load_duration_seconds.  
+- **Steps**: Azure login, set kubectl context, ensure service exists, deploy Fortio, run load, observe HPA scaling, collect results.  
+- **Interpreting results**: observe scale-up under load, node provisioning, scale-down after stabilization.  
+- **Cleanup**: removes Fortio pods automatically.  
+
+**Outcome**: Validates HPA scaling rules and cluster autoscaler behavior under controlled load.
+
+---
+
+## 📑 Documentation Navigation
+
+- [README.md](../README.md) – Root project overview  
+- [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
+- [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance  
+- [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
+
+🔗 Extras:  
+- [HANDBOOK.html](./HANDBOOK.html) – Web-friendly version  
+- [HANDBOOK_QUICKSTART.pdf](./HANDBOOK_QUICKSTART.pdf) – Quickstart summary (2–3 pages)  
+- [HANDBOOK_CHEATSHEET.pdf](./HANDBOOK_CHEATSHEET.pdf) – 1-page cheatsheet  
+- [HANDBOOK_CHEATSHEET_GRAPHICAL.pdf](./HANDBOOK_CHEATSHEET_GRAPHICAL.pdf) – Visual cheatsheet with diagram  
+- [HANDBOOK_FULL_PRESENTATION.pptx](./HANDBOOK_FULL_PRESENTATION.pptx) – Technical slide deck  
+- [HANDBOOK_EXECUTIVE_PRESENTATION.pptx](./HANDBOOK_EXECUTIVE_PRESENTATION.pptx) – Executive-friendly deck  
 
 ---
 
 
-# WORKFLOW_DETAILED.md
+---
 
-# 📖 Detailed Workflow Guide (Expanded Version)
+# Source: WORKFLOW_DETAILED.md
+
+# 📖 Detailed Workflow Guide (Expanded Version, Extended to 400+ Lines)
 
 ## 1. Introduction
 
-Modern software delivery pipelines demand speed, reproducibility, and safety. 
-Traditional deployment methods often required manual steps, long runbooks, and human oversight, 
-which increased the risk of misconfigurations, downtime, and security breaches. 
-This repository exists to solve that problem by providing a **parameter-driven, one-click deployment workflow** 
-that integrates Terraform for infrastructure, Kubernetes for application orchestration, and GitHub Actions for automation.
+Modern software delivery pipelines demand **speed, reproducibility, and safety**.  
+Traditional deployment methods often required **manual steps, long runbooks, and human oversight**, 
+which increased the risk of misconfigurations, downtime, and security breaches.  
 
-Instead of managing infrastructure provisioning and application deployment as two separate activities, 
-this repository treats them as stages of the same workflow. With a single GitHub Action trigger, 
-teams can create or destroy environments, deploy or remove applications, and even run security scans without touching any servers manually. 
-This workflow reflects the DevSecOps philosophy: embedding security and compliance checks directly into the deployment pipeline 
-while still giving teams granular control through parameters.
+This repository exists to solve those problems by providing a **parameter-driven, one-click deployment workflow** that integrates:
+
+- **Terraform** for infrastructure provisioning  
+- **Kubernetes** for container orchestration  
+- **GitHub Actions** for CI/CD automation  
+
+With a **single GitHub Action trigger**, teams can:  
+- Create or destroy environments,  
+- Deploy or remove applications,  
+- Run compliance/security scans,  
+- Validate autoscaling behavior.  
+
+This workflow reflects the **DevSecOps philosophy**: embedding security and compliance checks directly into the deployment pipeline 
+while still giving teams **granular control** through parameters.
 
 ---
 
 ## 2. Repository Structure in Depth
 
-Understanding the repository structure is key to appreciating how the workflow functions. 
-Every folder and file has a purpose, and together they form the foundation of the one-click deployment system.
+A strong workflow begins with a well-structured repository. Below is the breakdown:
 
 ### `.github/workflows/deploy-k8s.yml`
-This is the central automation file. It is a GitHub Actions workflow triggered manually via the `workflow_dispatch` event. 
-Inside, it defines inputs (parameters), environment variables, and jobs for security scanning, Terraform provisioning, 
-and Kubernetes application deployment. Conditional logic (`if:` statements) ensures that jobs only run when explicitly enabled by parameters.
+- Central automation file.  
+- Triggered manually (`workflow_dispatch`).  
+- Defines inputs (parameters), environment variables, and jobs.  
+- Conditional logic ensures jobs only run when enabled by parameters.  
+- Controls **security scan jobs, Terraform provisioning jobs, and Kubernetes app deployments**.
 
 ### `.github/workflows/delete-k8s-applications.yml`
-This workflow focuses on safe deletion of applications from the cluster. It is intentionally designed not to touch infrastructure. 
-It includes a `dry_run` parameter that shows what would be deleted and a `confirm` parameter that ensures no accidental deletion happens.
+- Workflow for **safe deletion of Kubernetes apps**.  
+- Uses `dry_run` and `confirm` flags for **safety-first deletion philosophy**.  
+- Does not touch infrastructure.  
+
+### `.github/workflows/hpa-fortio-stress-test.yml`
+- Workflow for **HPA (Horizontal Pod Autoscaler) validation**.  
+- Runs **Fortio-based stress tests** against services.  
+- Observes scaling behavior of pods and cluster autoscaler responsiveness.  
+- Outputs results in logs for performance analysis.
 
 ### `terraform/`
-This folder holds the Infrastructure-as-Code (IaC) definitions. It includes `.tf` files and `.tfvars` files that define cloud networking, 
-Kubernetes cluster setup, node groups, and load balancers. By modifying tfvars, environments can be customized without changing code.
+- Holds **Infrastructure-as-Code** (IaC) definitions.  
+- Contains `.tf` and `.tfvars` files that define:  
+  - Networking (VNets, subnets, security groups)  
+  - Managed Kubernetes cluster (AKS)  
+  - Node pools and autoscaling configuration  
+  - Supporting services (ACR, Log Analytics, Load Balancers)  
+- Enables parameterized environments (`dev.tfvars`, `test.tfvars`, etc.).  
 
 ### `apps/`
-This folder contains application source code and Dockerfiles. The included apps are:
-- A Node.js web application,
-- An NGINX server, and
-- k8sGPT, a Kubernetes diagnostics tool that can be configured to use Google or OpenAI as a provider.
-
-Each app is containerized and deployable to Kubernetes via manifests or Helm.
+- Contains **application sources and Dockerfiles**.  
+- Example applications:  
+  - Node.js web application  
+  - NGINX server  
+  - k8sGPT diagnostic tool (AI-powered)  
+- All apps are containerized and deployed with Kubernetes manifests.  
+- Easily extensible with new applications.  
 
 ### Documentation Files
-- `README.md`: Quick start and overview.  
-- `DOCUMENTATION.md`: Reference-style documentation for parameters and workflows.  
-- `DEPLOYMENT.md`: Case-based documentation with flowcharts.  
-- `WORKFLOW_DETAILED.md`: This file, a book-length explanation of the workflow.  
+- `README.md`: Quick start guide.  
+- `DOCUMENTATION.md`: General reference.  
+- `DEPLOYMENT.md`: Parameter-case mappings + flowcharts.  
+- `WORKFLOW_DETAILED.md`: This file, full workflow explanation (~400+ lines).  
+- `BEST_PRACTICES.md`: Security, scalability, governance.  
+- `HANDBOOK.md`: Combined single reference file.  
 
 ---
 
 ## 3. Workflow Lifecycle Overview
 
-The deployment lifecycle is parameter-driven. A single workflow can behave in multiple ways depending on the values chosen during execution.
+The one-click workflow can perform multiple roles, depending on **input parameters**:  
 
 1. **Security Scan Phase**  
-   If enabled, this runs static analysis and vulnerability scans without touching infrastructure or applications.
+   - Static analysis of Terraform, Docker images, Kubernetes manifests.  
+   - Runs only if `run_security_scan=true`.  
+   - Stops early if no infra/app deployment requested.  
 
 2. **Terraform Phase**  
-   If enabled, Terraform provisions infrastructure or tears it down depending on the action chosen (`apply`, `destroy`, `refresh`).
+   - Runs if `run_terraform=true`.  
+   - Executes lifecycle actions: `apply`, `destroy`, or `refresh`.  
+   - Responsible for creating/tearing down AKS, networking, and supporting resources.  
 
 3. **Application Deployment Phase**  
-   If enabled, Kubernetes manifests are applied to deploy the Node.js app, NGINX, and k8sGPT.
+   - Runs if `run_application_deployment=true`.  
+   - Uses `kubectl` to deploy:  
+     - Node.js app  
+     - NGINX  
+     - k8sGPT (provider switchable via parameter).  
 
-This lifecycle ensures flexibility: teams can run scans only, deploy infra only, deploy apps only, or perform full end-to-end deployment.
+4. **Optional HPA Stress Test Phase**  
+   - Triggered via a separate workflow (`hpa-fortio-stress-test.yml`).  
+   - Runs controlled load tests using Fortio.  
+   - Observes HPA scaling behavior.  
+
+This structure ensures **maximum flexibility**:  
+- Scan-only jobs  
+- Infra-only provisioning  
+- Apps-only deployment  
+- Full deployment (infra + apps)  
+- Destruction workflows  
+- Stress-testing workflows  
 
 ---
 
 ## 4. Security Scan Phase in Depth
 
-Security scanning is a first-class citizen in this workflow. 
-When the `run_security_scan` parameter is set to `true`, the workflow launches a dedicated job to analyze code and containers for risks.
+Security scans ensure vulnerabilities are caught early.
 
-### Why Security Scanning?
-Security scans are essential because cloud infrastructure and container workloads are frequent targets of attacks. 
-By scanning Terraform IaC files, Docker images, and Kubernetes manifests, the workflow catches misconfigurations or vulnerabilities before they reach production.
+### Why?
+- IaC misconfigurations can open **network exposure risks**.  
+- Container images may contain **outdated libraries**.  
+- Kubernetes manifests may request **privileged pods**.  
 
-### Example of IaC Security Scan
+### IaC Security Scan
+Runs Terraform validation and static checks. Example:
+
 ```yaml
 jobs:
   security-scan:
-    if: ${{ github.event.inputs.run_security_scan == 'true' }}
+    if: ${{ github.event.inputs.run_security_scan == &#x27;true&#x27; }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-
+      - uses: actions/checkout@v3
       - name: Run Terraform Static Analysis
         run: terraform validate
-
-      - name: Run Container Scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: myapp:latest
 ```
 
-### Example Output
-A typical scan might highlight an outdated base image in a Dockerfile or an insecure setting in Terraform, such as an open security group. 
-The workflow surfaces these findings directly in the GitHub Actions logs, making them visible to developers before any resources are touched.
+### Container Image Scan
+Uses **Trivy** to detect CVEs:
 
-### Short-Circuit Behavior
-If `run_security_scan=true` and all other flags are false, the workflow terminates after scanning. 
-This allows teams to run "scan-only" jobs as part of compliance audits without the risk of accidental deployments.
+```yaml
+- name: Run Container Scan
+  uses: aquasecurity/trivy-action@master
+  with:
+    image-ref: myapp:latest
+```
+
+### Example Findings
+- Terraform: “Security group allows 0.0.0.0/0 on port 22.”  
+- Trivy: “Critical vulnerability in `openssl` library.”  
+
+### Short-Circuit
+If only scans requested → workflow ends here.
 
 ---
 
 ## 5. Terraform Phase in Depth
 
-The Terraform phase is the backbone of infrastructure provisioning. When `run_terraform=true`, the workflow begins 
-executing Terraform commands to either create, destroy, or refresh infrastructure depending on the chosen `action` parameter.
+Terraform is used to **provision or destroy infrastructure**.
 
-### Terraform Initialization
-
-The workflow starts with `terraform init`. This downloads provider plugins (such as AWS), configures backends, 
-and ensures the environment is ready for planning and applying.
-
+### Initialization
 ```yaml
 - name: Terraform Init
   run: terraform init
 ```
 
-### Terraform Planning
-
-If the action is `apply` or `destroy`, a `terraform plan` step is executed to show the changes that will happen. 
-This plan acts as a safeguard, giving teams visibility before resources are created or destroyed.
+### Planning
+Shows intended actions before execution.
 
 ```yaml
 - name: Terraform Plan
   run: terraform plan -var-file=environments/${{ github.event.inputs.environment }}.tfvars
 ```
 
-### Terraform Apply
-
-When the action is `apply`, Terraform provisions the following resources:
-- VPC and networking components,
-- Subnets and routing tables,
-- A managed Kubernetes cluster,
-- Node pools,
-- Load balancers for services.
+### Apply
+Provisions full stack.
 
 ```yaml
 - name: Terraform Apply
   run: terraform apply -auto-approve -var-file=environments/${{ github.event.inputs.environment }}.tfvars
 ```
 
-### Terraform Refresh
+Creates:
+- VNet + subnets  
+- AKS cluster  
+- Node pools (with autoscaling enabled)  
+- ACR for images  
+- Load balancers  
+- Log Analytics workspace  
 
-The `refresh` action updates Terraform state to reflect real-world resources without making changes. 
-This is useful for detecting drift between Terraform state and actual infrastructure.
-
-### Terraform Destroy
-
-When `action=destroy`, Terraform tears down all provisioned resources. This ensures that developers can 
-easily remove entire environments when they are no longer needed, optimizing costs.
-
+### Refresh
 ```yaml
-- name: Terraform Destroy
-  run: terraform destroy -auto-approve -var-file=environments/${{ github.event.inputs.environment }}.tfvars
+terraform refresh -var-file=environments/dev.tfvars
 ```
+Synchronizes state with real-world infra.
 
-### Secrets and Authentication
+### Destroy
+```yaml
+terraform destroy -auto-approve -var-file=environments/dev.tfvars
+```
+Tears down resources.
 
-Terraform requires cloud credentials. These are passed securely from GitHub Secrets:
-
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-
-This avoids hardcoding credentials in the repo.
+### Authentication
+Uses Azure Service Principal (`AZURE_CREDENTIALS`) stored in GitHub Secrets.
 
 ---
 
 ## 6. Application Deployment Phase in Depth
 
-When `run_application_deployment=true`, the workflow connects to the cluster and applies Kubernetes manifests.
+When enabled, apps are deployed using `kubectl`.
 
-### Kubernetes Authentication
-
-Terraform outputs a kubeconfig file. The workflow uses this to authenticate kubectl:
-
-```yaml
-- name: Configure kubectl
-  run: aws eks update-kubeconfig --name mycluster --region us-east-1
+### Authentication
+```bash
+az aks get-credentials --name my-aks --resource-group rg-dev
 ```
 
-### Deploying Node.js App
-
-The Node.js application is deployed with a Deployment and Service manifest:
-
+### Deploy Node.js App
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -763,13 +710,9 @@ metadata:
   name: nodejs-app
 spec:
   replicas: 2
-  selector:
-    matchLabels:
-      app: nodejs
   template:
     metadata:
-      labels:
-        app: nodejs
+      labels: { app: nodejs }
     spec:
       containers:
       - name: nodejs
@@ -783,394 +726,632 @@ metadata:
   name: nodejs-service
 spec:
   type: LoadBalancer
+  ports:
+  - port: 3000
+    targetPort: 3000
   selector:
     app: nodejs
+```
+
+### Deploy NGINX
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels: { app: nginx }
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.21.6
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: nginx
+```
+
+### Deploy k8sGPT
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8sgpt
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels: { app: k8sgpt }
+    spec:
+      containers:
+      - name: k8sgpt
+        image: mydockerhub/k8sgpt:latest
+        env:
+        - name: PROVIDER
+          value: &quot;google&quot;
+        ports:
+        - containerPort: 8080
+```
+
+Exposed via LoadBalancer service.
+
+---
+
+## 7. HPA Stress Test Workflow
+
+The third workflow validates HPA.
+
+### Trigger
+Manual via GitHub UI with inputs like `qps=50`, `duration=120`.
+
+### Steps
+1. Azure login  
+2. Set kubectl context  
+3. Deploy Fortio pod/job  
+4. Run load test  
+5. Observe HPA scaling  
+6. Collect results  
+7. Cleanup  
+
+### Benefits
+- Validates scaling thresholds  
+- Tests cluster autoscaler responsiveness  
+- Ensures reliability before production  
+
+---
+
+## 8. Error Handling
+
+- **Terraform Failures** → workflow stops.  
+- **kubectl Failures** → manifest errors shown.  
+- **Deletion** → requires explicit confirm.  
+- **HPA Test Failures** → logs scaling issues.  
+
+---
+
+## 9. Case Studies
+
+- **Scan Only**: `run_security_scan=true`.  
+- **Infra Only**: `run_terraform=true, run_application_deployment=false`.  
+- **Apps Only**: `run_application_deployment=true`.  
+- **Full Deployment**: all enabled, action=apply.  
+- **Destroy**: action=destroy.  
+- **HPA Test**: third workflow.  
+
+---
+
+## 10. Best Practices Integration
+
+- Use RBAC &amp; network policies.  
+- Separate namespaces (`dev`, `test`).  
+- Monitor costs with Infracost.  
+- Use GitOps with ArgoCD for drift detection.  
+- Store secrets in GitHub Secrets.  
+
+---
+
+## 11. Conclusion
+
+This repository provides a **comprehensive DevSecOps pipeline**.  
+By combining Terraform, Kubernetes, and GitHub Actions, it delivers:  
+
+- **Reproducible environments**  
+- **Granular parameterized control**  
+- **Built-in security scanning**  
+- **Safe deletion guarantees**  
+- **Performance validation workflows**  
+
+This workflow is production-ready and extensible.  
+It enables organizations to scale securely, efficiently, and responsibly.
+
+---
+
+## 📑 Documentation Navigation
+
+- [README.md](../README.md) – Root overview  
+- [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation  
+- [DEPLOYMENT.md](./DEPLOYMENT.md) – Workflow guide  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – This file (~400+ lines)  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Infra details  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – App deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – Automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Best practices  
+- [HANDBOOK.md](./HANDBOOK.md) – Combined doc  
+
+---
+
+---
+
+## 11. Advanced Deployment Strategies
+
+Modern Kubernetes workflows often need more than simple rolling updates. This repository can evolve to support advanced release strategies.
+
+### 11.1 Blue/Green Deployments
+
+Blue/Green deployments create two environments (Blue = live, Green = new).  
+- Green environment is provisioned alongside Blue.  
+- Traffic is switched from Blue to Green when validation passes.  
+- Rollback is instant by redirecting traffic back to Blue.  
+
+Example Service YAML using labels:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodejs-service
+spec:
+  selector:
+    app: nodejs
+    track: blue  # or green
   ports:
   - port: 3000
     targetPort: 3000
 ```
 
-This exposes the Node.js app at `http://&lt;lb-ip&gt;:3000`.
+Switching the `track` label shifts traffic instantly without downtime.
 
-### Deploying NGINX
+### 11.2 Canary Releases
 
-NGINX is deployed similarly and exposed via a LoadBalancer on port 80. This can serve static content or act as a reverse proxy.
+Canary deployments release new versions to a small subset of users before full rollout.  
+- Start with 10% traffic → monitor metrics.  
+- Gradually increase to 50%, then 100%.  
+- Rollback if errors spike.  
 
-### Deploying k8sGPT
+This reduces risk in production.
 
-k8sGPT is deployed as a Kubernetes service. The `provider` parameter (google/openai) is passed as an environment variable:
+### 11.3 A/B Testing
 
-```yaml
-env:
-- name: PROVIDER
-  value: ${{ github.event.inputs.provider }}
+Traffic splitting can also support A/B tests by routing traffic based on HTTP headers or cookies.  
+This allows experimentation without impacting all users.
+
+---
+
+## 12. Multi-Environment Pipelines
+
+This repository already supports `dev` and `test`, but can extend to `prod` with stricter guardrails.
+
+### Example Environments
+
+- **Dev** → ephemeral, spot nodes, minimal quotas.  
+- **Test** → stable, used for QA, medium quotas.  
+- **Prod** → HA, reserved nodes, environment approvals.  
+
+### GitHub Actions Environment Protection
+
+Use GitHub’s **environment protection rules**:  
+- Require approvals before deploying to prod.  
+- Restrict secrets (e.g., `AZURE_CREDENTIALS_PROD`) to production environment.  
+- Use branch protection (only `main` can deploy to prod).  
+
+---
+
+## 13. Compliance and Policy Automation
+
+Compliance is critical in regulated industries. This repo can integrate **policy as code**.
+
+### Tools
+
+- **OPA (Open Policy Agent)** → enforce manifest rules.  
+- **Conftest** → validate Terraform IaC.  
+- **Kyverno** → Kubernetes admission policies.  
+
+### Example OPA Policy
+
+```rego
+package kubernetes.admission
+
+deny[msg] {
+  input.request.kind.kind == &quot;Deployment&quot;
+  input.request.object.spec.template.spec.containers[_].image == &quot;latest&quot;
+  msg = &quot;Disallow &#x27;latest&#x27; tags in production&quot;
+}
 ```
 
-This allows runtime switching of diagnostic providers.
+This blocks deploying containers with `:latest` image tags.
 
 ---
 
-## 7. End-to-End Deployment Case Studies
+## 14. Observability and Monitoring
 
-### Case: Full Deployment
-Parameters:
-- `environment=dev`
-- `action=apply`
-- `provider=google`
-- `run_security_scan=false`
-- `run_terraform=true`
-- `run_application_deployment=true`
+Scaling and troubleshooting require observability. Integrations include:
 
-Flow:
-1. Workflow starts, skips security scan.
-2. Terraform provisions a dev cluster.
-3. kubectl deploys Node.js, NGINX, and k8sGPT with Google provider.
-4. Apps accessible via LoadBalancer IPs.
+- **Prometheus + Grafana** → metrics, dashboards.  
+- **ELK/EFK Stack** → logs.  
+- **OpenTelemetry** → distributed tracing.  
+- **Azure Monitor + Log Analytics** → native monitoring.  
 
-### Case: Scan Only
-Parameters:
-- `run_security_scan=true`
-- all others false
+### Example: Horizontal Pod Autoscaler Metrics
 
-Flow:
-1. Workflow scans Terraform, Dockerfiles, and manifests.
-2. Stops after reporting vulnerabilities.
-3. No infra or apps are deployed.
+```bash
+kubectl get hpa nodejs-app
+NAME          REFERENCE            TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+nodejs-app    Deployment/nodejs    65%/60%   2         10        4          10m
+```
 
-### Case: Destroy
-Parameters:
-- `action=destroy`
-- `run_terraform=true`
-
-Flow:
-1. Terraform tears down all infra.
-2. Applications and load balancers are removed automatically.
+Shows autoscaling in action.
 
 ---
 
-## 8. Error Handling and Safety
+## 15. CI/CD Integration
 
-Error handling is built in at every step.
+GitHub Actions integrates with CI/CD pipelines seamlessly.
 
-- **Terraform Errors**: If tfvars are invalid or cloud quotas are exceeded, Terraform fails. Workflow halts.  
-- **kubectl Errors**: If manifests are invalid, kubectl fails. Workflow halts before deploying further apps.  
-- **Deletion Workflow Safety**: Requires both `dry_run=false` and `confirm=true` to actually delete apps.  
-- **Short-Circuiting**: If a step fails, downstream steps are skipped.  
+### CI Jobs
 
-This ensures safety in production environments.
+- Linting (YAML, Terraform, Dockerfiles).  
+- Unit tests for apps.  
+- Security scans (Trivy, tfsec).  
 
----
+### CD Jobs
 
-## 9. Security Philosophy
+- Terraform apply.  
+- Kubernetes manifests apply.  
+- Canary/Blue-Green rollout.  
 
-Security is embedded across the pipeline:
-
-- **Shift Left**: Scans run before infra or apps are touched.  
-- **Secrets Management**: Credentials stored in GitHub Secrets.  
-- **Principle of Least Privilege**: Terraform credentials scoped narrowly.  
-- **Safe Deletions**: Double confirmation needed.  
-
-This philosophy ensures compliance with DevSecOps best practices.
+CI ensures correctness, CD ensures safe rollout.
 
 ---
 
-## 10. Conclusion
+## 16. Future Enhancements
 
-The workflow in this repository represents a **modern, flexible, and safe approach** to Kubernetes deployments. 
-It unifies infrastructure provisioning, application deployment, and security scanning into a single parameter-driven workflow. 
-By leveraging Terraform, Kubernetes, and GitHub Actions together, it ensures reproducibility, auditability, and speed. 
-Teams can confidently deploy, update, scan, or destroy environments with a single click, 
-while maintaining guardrails against accidental misconfigurations or security oversights.
-
-This document has explained the workflow in detail, from repository structure to case studies. 
-In practice, the result is a system that reduces operational overhead, increases developer productivity, 
-and strengthens the security posture of any organization using it.
+- **AI-Ops** → Predict pod failures before they occur.  
+- **Predictive Scaling** → Scale based on ML-driven forecasts.  
+- **Automated Cost Governance** → Use FinOps tools (Infracost + Azure Cost Management).  
+- **GitOps Controllers** → FluxCD/ArgoCD for continuous reconciliation.  
+- **Chaos Engineering** → Inject pod/node failures to test resilience.  
 
 ---
 
+## 17. Final Thoughts
 
-# TERRAFORM_DETAILED.md
+This expanded workflow demonstrates not only how to deploy infrastructure and applications, but how to:  
+- Release safely with Blue/Green and Canary.  
+- Enforce compliance with OPA/Kyverno.  
+- Scale across environments with guardrails.  
+- Monitor, trace, and troubleshoot effectively.  
 
-# 🌍 Terraform Detailed Guide (Expanded Version)
+By combining **Terraform, Kubernetes, GitHub Actions, and modern DevOps practices**, this repository evolves from a basic CI/CD system into a **cloud-native platform** that can serve production-grade workloads with confidence.
+
+---
+
+## 📑 Documentation Navigation
+
+- [README.md](../README.md) – Root project overview  
+- [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
+- [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance  
+- [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
+
+🔗 Extras:  
+- [HANDBOOK.html](./HANDBOOK.html) – Web-friendly version  
+- [HANDBOOK_QUICKSTART.pdf](./HANDBOOK_QUICKSTART.pdf) – Quickstart summary (2–3 pages)  
+- [HANDBOOK_CHEATSHEET.pdf](./HANDBOOK_CHEATSHEET.pdf) – 1-page cheatsheet  
+- [HANDBOOK_CHEATSHEET_GRAPHICAL.pdf](./HANDBOOK_CHEATSHEET_GRAPHICAL.pdf) – Visual cheatsheet with diagram  
+- [HANDBOOK_FULL_PRESENTATION.pptx](./HANDBOOK_FULL_PRESENTATION.pptx) – Technical slide deck  
+- [HANDBOOK_EXECUTIVE_PRESENTATION.pptx](./HANDBOOK_EXECUTIVE_PRESENTATION.pptx) – Executive-friendly deck  
+
+---
+
+---
+
+# Source: TERRAFORM_DETAILED.md
+
+# 🌍 Terraform Detailed Guide (Azure Version)
 
 ## 1. Introduction
 
-Terraform is the foundation of infrastructure provisioning in this repository. 
-It brings the principle of "infrastructure as code" (IaC) into practice, enabling teams to define, version, and reproduce 
-cloud environments in a consistent and auditable way. Without Terraform, developers would have to rely on manual console 
-operations or ad-hoc scripts, which are error-prone and non-reproducible.
+Terraform is the backbone of infrastructure provisioning in this repository.  
+It enables **Infrastructure as Code (IaC)**, allowing teams to define, version, and reproduce **Azure infrastructure** in a consistent and auditable way.
 
-The decision to use Terraform here is intentional. It allows the repository to remain cloud-agnostic at a conceptual level 
-while still leveraging the AWS provider for real deployments. This separation of infrastructure from applications means 
-that Kubernetes clusters, networking, and load balancers can be created or destroyed with a single workflow execution.
+This repository uses Terraform to provision:
+
+- **Resource Group** (logical container for resources)  
+- **Networking** (VNet + Subnets + NSGs)  
+- **Azure Container Registry (ACR)** for container images  
+- **Azure Kubernetes Service (AKS)** for workloads  
+- **Log Analytics Workspace** for monitoring and observability  
+
+By combining Terraform with **GitHub Actions**, the system provides one-click provisioning of Azure Kubernetes environments.
 
 ---
 
 ## 2. Philosophy of Terraform in This Repository
 
-Terraform is more than just a provisioning tool; it is a control mechanism that defines **what exists** in the cloud and ensures 
-that the current state matches the desired state. The philosophy followed here includes:
+Terraform defines **what exists** in Azure and reconciles actual state with desired state.  
+The philosophy applied here:
 
-- **Declarative Infrastructure**: Resources are defined in `.tf` files and applied consistently across environments.  
-- **Parameterization with tfvars**: Each environment (dev, test, prod) has its own `.tfvars` file, ensuring separation of concerns.  
-- **Automation via GitHub Actions**: Terraform is invoked automatically through workflows, eliminating manual steps.  
-- **Safety through Planning**: Every apply is preceded by a plan, giving visibility into changes.  
-- **Reversibility**: Infrastructure can be destroyed just as easily as it can be created.  
+- **Declarative IaC** – resources are defined in `.tf` files.  
+- **Environment separation** – `dev.tfvars`, `test.tfvars` provide isolation.  
+- **Automation** – executed through GitHub Actions, not manual CLI.  
+- **Safety** – every `apply` is preceded by a `plan`.  
+- **Reversibility** – environments can be destroyed with one command.  
 
 ---
 
-## 3. Terraform Integration with the Workflow
+## 3. Terraform in the Workflow
 
-Terraform is conditionally executed when the GitHub Actions workflow input `run_terraform` is set to true. 
-The specific action Terraform performs is controlled by the `action` input (`apply`, `destroy`, or `refresh`).
+Terraform runs when the workflow input `run_terraform=true`.  
+Action parameter controls behavior:
+
+- `apply` → Provision AKS + ACR + networking + monitoring  
+- `destroy` → Delete all Azure resources provisioned  
+- `refresh` → Sync Terraform state with actual Azure resources  
 
 ### Example Workflow Snippet
 
 ```yaml
 jobs:
   terraform:
-    if: ${{ github.event.inputs.run_terraform == 'true' }}
+    if: ${{ github.event.inputs.run_terraform == &#x27;true&#x27; }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         run: terraform init
 
       - name: Terraform Plan
-        run: terraform plan -var-file=environments/${{ github.event.inputs.environment }}.tfvars
+        run: terraform plan -var-file=${{ github.event.inputs.environment }}.tfvars
 
       - name: Terraform Apply
-        if: ${{ github.event.inputs.action == 'apply' }}
-        run: terraform apply -auto-approve -var-file=environments/${{ github.event.inputs.environment }}.tfvars
+        if: ${{ github.event.inputs.action == &#x27;apply&#x27; }}
+        run: terraform apply -auto-approve -var-file=${{ github.event.inputs.environment }}.tfvars
 
       - name: Terraform Destroy
-        if: ${{ github.event.inputs.action == 'destroy' }}
-        run: terraform destroy -auto-approve -var-file=environments/${{ github.event.inputs.environment }}.tfvars
-
-      - name: Terraform Refresh
-        if: ${{ github.event.inputs.action == 'refresh' }}
-        run: terraform refresh -var-file=environments/${{ github.event.inputs.environment }}.tfvars
+        if: ${{ github.event.inputs.action == &#x27;destroy&#x27; }}
+        run: terraform destroy -auto-approve -var-file=${{ github.event.inputs.environment }}.tfvars
 ```
 
-This snippet illustrates how Terraform is integrated directly into the workflow, tied to the parameters that users choose.
+---
+
+## 4. Provider &amp; Authentication
+
+Terraform uses the **AzureRM provider**.
+
+```hcl
+provider &quot;azurerm&quot; {
+  features {}
+}
+```
+
+### Authentication
+
+We use a **single GitHub secret: `AZURE_CREDENTIALS`**, which contains a Service Principal JSON.  
+It is consumed by `azure/login` and exported as `ARM_*` variables for Terraform.
+
+Example JSON:
+
+```json
+{
+  &quot;clientId&quot;: &quot;xxxx&quot;,
+  &quot;clientSecret&quot;: &quot;xxxx&quot;,
+  &quot;subscriptionId&quot;: &quot;xxxx&quot;,
+  &quot;tenantId&quot;: &quot;xxxx&quot;
+}
+```
 
 ---
 
-## 4. Terraform Commands in Depth
+## 5. State Management
 
-### `terraform init`
-This command sets up the working directory, downloads provider plugins, and configures remote backends. 
-It is the first step required before any plan or apply.
+Terraform state is stored remotely in **Azure Storage** for safety and collaboration.
 
-### `terraform plan`
-The plan phase calculates the actions Terraform will take to reconcile the desired state with the current state. 
-This is vital for visibility. In a GitHub Actions run, the plan output is visible in the logs, giving reviewers confidence 
-before apply is executed.
+```hcl
+terraform {
+  backend &quot;azurerm&quot; {
+    resource_group_name  = &quot;rg-tf-backend&quot;
+    storage_account_name = &quot;tfbackendstate001&quot;
+    container_name       = &quot;tfstate&quot;
+    key                  = &quot;infra.tfstate&quot;
+  }
+}
+```
 
-### `terraform apply`
-The apply phase provisions resources. In this repository, it creates networking components, a Kubernetes cluster, 
-node pools, and load balancers. The `-auto-approve` flag is used in automation to skip manual confirmation.
+Benefits of remote state:
 
-### `terraform refresh`
-This synchronizes Terraform state with real-world resources. If a resource has been modified outside Terraform, 
-refresh updates the state file to reflect reality. This helps detect drift.
-
-### `terraform destroy`
-The destroy command tears down resources. It is useful for cost management, allowing temporary environments 
-to be created and destroyed as needed.
+- Collaboration  
+- Locking to avoid conflicts  
+- Versioning and recovery  
 
 ---
 
-## 5. Environment Variables and tfvars
+## 6. Core Azure Resources
 
-Terraform is driven by `.tfvars` files that define values for variables. Each environment has its own tfvars file:
+### 6.1 Resource Group
 
-- `dev.tfvars`
-- `test.tfvars`
-- `prod.tfvars`
+```hcl
+resource &quot;azurerm_resource_group&quot; &quot;rg&quot; {
+  name     = &quot;rg-aks-deployment&quot;
+  location = &quot;East US&quot;
+}
+```
+
+---
+
+### 6.2 Networking (VNet, Subnets, NSG)
+
+```hcl
+resource &quot;azurerm_virtual_network&quot; &quot;vnet&quot; {
+  name                = &quot;vnet-aks&quot;
+  address_space       = [&quot;10.0.0.0/16&quot;]
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource &quot;azurerm_subnet&quot; &quot;aks_subnet&quot; {
+  name                 = &quot;aks-subnet&quot;
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = [&quot;10.0.1.0/24&quot;]
+}
+```
+
+---
+
+### 6.3 Azure Container Registry (ACR)
+
+```hcl
+resource &quot;azurerm_container_registry&quot; &quot;acr&quot; {
+  name                = &quot;acrDeploymentDemo&quot;
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  sku                 = &quot;Basic&quot;
+  admin_enabled       = true
+}
+```
+
+---
+
+### 6.4 Azure Kubernetes Service (AKS)
+
+```hcl
+resource &quot;azurerm_kubernetes_cluster&quot; &quot;aks&quot; {
+  name                = &quot;aks-deployment-demo&quot;
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  dns_prefix          = &quot;aksdemo&quot;
+
+  default_node_pool {
+    name       = &quot;systempool&quot;
+    node_count = 2
+    vm_size    = &quot;Standard_B4ms&quot;
+  }
+
+  identity {
+    type = &quot;SystemAssigned&quot;
+  }
+
+  role_based_access_control_enabled = true
+}
+```
+
+Access is configured in CI/CD with:
+
+```sh
+az aks get-credentials --resource-group rg-aks-deployment --name aks-deployment-demo
+```
+
+---
+
+### 6.5 Log Analytics Workspace
+
+```hcl
+resource &quot;azurerm_log_analytics_workspace&quot; &quot;law&quot; {
+  name                = &quot;aks-log-analytics&quot;
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku                 = &quot;PerGB2018&quot;
+  retention_in_days   = 30
+}
+```
+
+This integrates with **Azure Monitor for Containers**.
+
+---
+
+## 7. Environments (tfvars)
+
+Each environment has its own `.tfvars` file.
 
 ### Example `dev.tfvars`
 
 ```hcl
-region = "us-east-1"
-cluster_name = "dev-cluster"
-node_count = 2
-node_instance_type = "t3.medium"
+location       = &quot;East US&quot;
+cluster_name   = &quot;aks-dev&quot;
+node_count     = 2
+node_vm_size   = &quot;Standard_B2s&quot;
+acr_sku        = &quot;Basic&quot;
 ```
 
-This configuration ensures that the dev environment is small and cost-efficient, while test or prod tfvars 
-can scale up resources.
+---
 
-By parameterizing environments, teams ensure that clusters do not interfere with each other and can be tuned individually.
+## 8. Error Handling
+
+Common failure scenarios:
+
+- **Quota limits** → e.g., insufficient cores in region.  
+- **Networking conflicts** → overlapping CIDR ranges.  
+- **ACR name taken** → must be globally unique.  
+
+Terraform plan highlights these issues early.
 
 ---
 
-## 6. State Management and Drift Handling
+## 9. Best Practices for Azure Terraform
 
-Terraform maintains a state file that records the resources it manages. 
-In automation, this state is typically stored remotely to allow collaboration and prevent corruption. 
-While this repository defaults to local state for simplicity, production deployments are recommended 
-to use remote state (e.g., S3 with DynamoDB locking).
-
-### Why Remote State?
-
-- Collaboration: Multiple developers can work on the same infrastructure without overwriting each other’s state.  
-- Safety: DynamoDB locking prevents concurrent applies.  
-- Auditability: Remote state is versioned and recoverable.  
-
-### Drift Detection
-
-When resources are modified outside Terraform (e.g., manually changing a security group in AWS), drift occurs. 
-Running `terraform refresh` or `terraform plan` reveals drift by comparing real-world resources with the state file. 
-This ensures that Terraform remains the source of truth.
+- Use **remote state in Azure Storage**  
+- Separate environments via `.tfvars`  
+- Use **RBAC + Managed Identity** for AKS  
+- Monitor with **Log Analytics**  
+- Rotate Service Principal credentials regularly  
+- Keep node pools minimal in dev/test  
 
 ---
 
+## 10. Conclusion
 
-## 7. AWS Resources Provisioned
+Terraform in this repo provisions a **complete AKS environment** with ACR, networking, and monitoring.  
+By parameterizing environments and automating via GitHub Actions, it ensures **reproducibility, safety, and scalability**.  
 
-When `terraform apply` is executed, the following AWS resources are typically created in this repository’s context:
-
-- **VPC (Virtual Private Cloud)**  
-  Defines the isolated network where Kubernetes nodes and services run.
-
-- **Subnets**  
-  Public and private subnets spread across availability zones for resilience.
-
-- **Internet Gateway and NAT Gateway**  
-  Allow outbound internet access for nodes while securing internal traffic.
-
-- **Security Groups**  
-  Define ingress and egress rules for cluster communication and external access.
-
-- **EKS Cluster (or equivalent)**  
-  Managed Kubernetes control plane that hosts workloads.
-
-- **Node Groups**  
-  Worker nodes that run pods. Instance size and count are defined in tfvars.
-
-- **Load Balancers**  
-  Expose Node.js, NGINX, and k8sGPT applications externally.
-
-Each resource is explicitly defined and linked, ensuring predictable environments.
+End result: **One-click AKS clusters with secure CI/CD integration**.  
 
 ---
 
-## 8. Secrets and Authentication
+## 📑 Documentation Navigation
 
-Terraform requires cloud credentials to perform provisioning. These are never stored in code. Instead, GitHub Secrets 
-are used:
+- [README.md](../README.md) – Root project overview  
+- [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
+- [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance  
+- [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
 
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-
-These values are injected at runtime. The workflow ensures that secrets are masked in logs, preventing accidental exposure.
-
-```yaml
-env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-```
-
-This design follows best practices for secret management in CI/CD pipelines.
-
----
-
-## 9. Error Handling in Terraform
-
-Errors can arise from many sources: invalid tfvars, quota limits, or AWS service issues. The workflow addresses these 
-scenarios through visibility and fail-fast behavior.
-
-### Example: Invalid tfvars
-If a developer sets `node_instance_type = "invalid.type"`, Terraform plan fails immediately. Logs in the workflow show the error.
-
-### Example: Quota Exceeded
-If too many load balancers are already allocated in a region, Terraform apply will fail. Developers must either increase quotas 
-or adjust resources.
-
-### Example: Network Conflicts
-If a VPC CIDR overlaps with an existing network, Terraform plan will highlight conflicts before applying.
-
-This feedback loop ensures errors are caught early, and environments are not left half-deployed.
+🔗 Extras:  
+- [HANDBOOK.html](./HANDBOOK.html) – Web-friendly version  
+- [HANDBOOK_QUICKSTART.pdf](./HANDBOOK_QUICKSTART.pdf) – Quickstart summary (2–3 pages)  
+- [HANDBOOK_CHEATSHEET.pdf](./HANDBOOK_CHEATSHEET.pdf) – 1-page cheatsheet  
+- [HANDBOOK_CHEATSHEET_GRAPHICAL.pdf](./HANDBOOK_CHEATSHEET_GRAPHICAL.pdf) – Visual cheatsheet with diagram  
+- [HANDBOOK_FULL_PRESENTATION.pptx](./HANDBOOK_FULL_PRESENTATION.pptx) – Technical slide deck  
+- [HANDBOOK_EXECUTIVE_PRESENTATION.pptx](./HANDBOOK_EXECUTIVE_PRESENTATION.pptx) – Executive-friendly deck  
 
 ---
 
-## 10. Case Studies
-
-### Case: Apply
-A developer triggers the workflow with:
-- `environment=dev`
-- `action=apply`
-- `run_terraform=true`
-
-Result: Terraform provisions a dev cluster, networking, and load balancers.
-
-### Case: Destroy
-Parameters:
-- `environment=dev`
-- `action=destroy`
-- `run_terraform=true`
-
-Result: Terraform tears down all resources, freeing costs and cleaning up networks.
-
-### Case: Refresh
-Parameters:
-- `environment=test`
-- `action=refresh`
-- `run_terraform=true`
-
-Result: Terraform syncs state with actual AWS resources, identifying drift without making changes.
-
 ---
 
-## 11. Best Practices for Terraform in CI/CD
+# Source: KUBERNETES_DETAILED.md
 
-- **Use Remote State**: Store state in S3 with DynamoDB locking to enable safe collaboration.  
-- **Modularize Code**: Break Terraform into reusable modules for VPC, EKS, and Node Groups.  
-- **Version Providers**: Pin provider versions in `.tf` files to prevent unexpected upgrades.  
-- **Validate Early**: Run `terraform validate` as part of security scans.  
-- **Use Small Environments**: Keep dev/test clusters lightweight to optimize costs.  
-- **Destroy Unused Resources**: Use `action=destroy` for temporary environments.  
-
----
-
-## 12. Future Improvements
-
-The Terraform implementation here can evolve with:
-
-- **Policy as Code**: Integrate Sentinel or OPA to enforce compliance.  
-- **Helm Provider**: Deploy Kubernetes apps directly from Terraform using Helm charts.  
-- **Cost Estimation**: Integrate Infracost to show financial impact before apply.  
-- **More Environments**: Expand tfvars for staging, performance, and production.  
-- **Multi-Cloud Readiness**: Adapt providers for GCP or Azure.  
-
----
-
-## 13. Conclusion
-
-Terraform in this repository provides the **infrastructure backbone** for Kubernetes deployments. 
-By combining declarative IaC with automation through GitHub Actions, teams achieve reliable, repeatable, 
-and auditable provisioning of cloud environments.
-
-The use of tfvars ensures environment isolation, while state management guarantees consistency. 
-Error handling mechanisms prevent broken deployments, and secrets management secures credentials. 
-Through apply, destroy, and refresh actions, infrastructure can be controlled with precision.
-
-In practice, this Terraform setup empowers teams to spin up dev or test clusters within minutes, 
-tear them down when not needed, and ensure that production clusters remain stable and drift-free.
-
-This detailed guide has explained not only **what Terraform does in this repo**, but also **how and why it does it**, 
-illustrating the broader DevOps philosophy of automation, safety, and reproducibility.
-
----
-
-
-# KUBERNETES_DETAILED.md
 
 # ☸️ Kubernetes Detailed Guide (Expanded Version)
 
@@ -1193,14 +1374,14 @@ scalable, and easily extensible.
 
 ## 2. Kubernetes Cluster Overview
 
-The cluster is provisioned by Terraform, typically through AWS EKS. Once the control plane and worker nodes are created, 
-GitHub Actions connects to the cluster using a kubeconfig file. At this point, Kubernetes becomes the orchestration engine 
+The cluster is provisioned by Terraform, typically through Azure AKS. Once the control plane and worker nodes are created, 
+GitHub Actions connects to the cluster using a kubeconfig file. At this point, Kubernetes becomes the orchestration engine. The workflow uses `az aks get-credentials` to configure kubectl context 
 for deploying applications.
 
 The cluster architecture includes:
-- **Control Plane**: Managed by the cloud provider (EKS).  
+- **Control Plane**: Managed by the cloud provider (AKS).  
 - **Worker Nodes**: Provisioned in node groups defined by tfvars.  
-- **Networking**: VPC and subnets configured by Terraform.  
+- **Networking**: VNet and subnets configured by Terraform.  
 - **Load Balancers**: Created dynamically by Kubernetes Services of type `LoadBalancer`.  
 
 This design ensures that applications deployed to the cluster are immediately reachable from outside.
@@ -1361,7 +1542,7 @@ spec:
         image: mydockerhub/k8sgpt:latest
         env:
         - name: PROVIDER
-          value: "google" # or "openai"
+          value: &quot;google&quot; # or &quot;openai&quot;
         ports:
         - containerPort: 8080
 ```
@@ -1435,8 +1616,8 @@ kind: ConfigMap
 metadata:
   name: nodejs-config
 data:
-  APP_ENV: "development"
-  LOG_LEVEL: "debug"
+  APP_ENV: &quot;development&quot;
+  LOG_LEVEL: &quot;debug&quot;
 ```
 
 Example of Secret for k8sGPT:
@@ -1578,8 +1759,33 @@ but *how* and *why*. It equips teams to extend the setup, troubleshoot effective
 
 ---
 
+## 📑 Documentation Navigation
 
-# GITHUBACTIONS_DETAILED.md
+- [README.md](../README.md) – Root project overview  
+- [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
+- [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance  
+- [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
+
+🔗 Extras:  
+- [HANDBOOK.html](./HANDBOOK.html) – Web-friendly version  
+- [HANDBOOK_QUICKSTART.pdf](./HANDBOOK_QUICKSTART.pdf) – Quickstart summary (2–3 pages)  
+- [HANDBOOK_CHEATSHEET.pdf](./HANDBOOK_CHEATSHEET.pdf) – 1-page cheatsheet  
+- [HANDBOOK_CHEATSHEET_GRAPHICAL.pdf](./HANDBOOK_CHEATSHEET_GRAPHICAL.pdf) – Visual cheatsheet with diagram  
+- [HANDBOOK_FULL_PRESENTATION.pptx](./HANDBOOK_FULL_PRESENTATION.pptx) – Technical slide deck  
+- [HANDBOOK_EXECUTIVE_PRESENTATION.pptx](./HANDBOOK_EXECUTIVE_PRESENTATION.pptx) – Executive-friendly deck  
+
+---
+
+
+---
+
+# Source: GITHUBACTIONS_DETAILED.md
 
 # ⚙️ GitHub Actions Detailed Guide (Expanded Version)
 
@@ -1616,17 +1822,17 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment"
+        description: &quot;Target environment&quot;
         required: true
-        default: "dev"
+        default: &quot;dev&quot;
       action:
-        description: "Terraform action (apply/destroy/refresh)"
+        description: &quot;Terraform action (apply/destroy/refresh)&quot;
         required: true
-        default: "apply"
+        default: &quot;apply&quot;
       run_security_scan:
-        description: "Run security scan?"
+        description: &quot;Run security scan?&quot;
         required: true
-        default: "false"
+        default: &quot;false&quot;
 ```
 
 This snippet shows how the workflow is parameterized with `workflow_dispatch` inputs, enabling manual control.
@@ -1657,7 +1863,7 @@ This job runs only when `run_security_scan=true`. It validates Terraform and sca
 ```yaml
 jobs:
   security-scan:
-    if: ${{ github.event.inputs.run_security_scan == 'true' }}
+    if: ${{ github.event.inputs.run_security_scan == &#x27;true&#x27; }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -1683,11 +1889,16 @@ The Terraform job is conditional on `run_terraform=true`. It executes `init`, `p
 ```yaml
 jobs:
   terraform:
-    if: ${{ github.event.inputs.run_terraform == 'true' }}
+    if: ${{ github.event.inputs.run_terraform == &#x27;true&#x27; }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -1699,15 +1910,15 @@ jobs:
         run: terraform plan -var-file=environments/${{ github.event.inputs.environment }}.tfvars
 
       - name: Terraform Apply
-        if: ${{ github.event.inputs.action == 'apply' }}
+        if: ${{ github.event.inputs.action == &#x27;apply&#x27; }}
         run: terraform apply -auto-approve -var-file=environments/${{ github.event.inputs.environment }}.tfvars
 
       - name: Terraform Destroy
-        if: ${{ github.event.inputs.action == 'destroy' }}
+        if: ${{ github.event.inputs.action == &#x27;destroy&#x27; }}
         run: terraform destroy -auto-approve -var-file=environments/${{ github.event.inputs.environment }}.tfvars
 
       - name: Terraform Refresh
-        if: ${{ github.event.inputs.action == 'refresh' }}
+        if: ${{ github.event.inputs.action == &#x27;refresh&#x27; }}
         run: terraform refresh -var-file=environments/${{ github.event.inputs.environment }}.tfvars
 ```
 
@@ -1722,11 +1933,16 @@ This job runs when `run_application_deployment=true`. It configures kubectl and 
 ```yaml
 jobs:
   deploy-apps:
-    if: ${{ github.event.inputs.run_application_deployment == 'true' }}
+    if: ${{ github.event.inputs.run_application_deployment == &#x27;true&#x27; }}
     runs-on: ubuntu-latest
     steps:
-      - name: Configure kubectl
-        run: aws eks update-kubeconfig --name mycluster --region us-east-1
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set kubectl context
+        run: az aks get-credentials --resource-group aks-cluster-${{ github.event.inputs.environment }}-rg --name aks-cluster-${{ github.event.inputs.environment }} --overwrite-existing
 
       - name: Deploy Node.js App
         run: kubectl apply -f k8s/nodejs.yaml
@@ -1766,17 +1982,22 @@ jobs:
   delete:
     runs-on: ubuntu-latest
     steps:
-      - name: Configure kubectl
-        run: aws eks update-kubeconfig --name mycluster --region us-east-1
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set kubectl context
+        run: az aks get-credentials --resource-group aks-cluster-${{ github.event.inputs.environment }}-rg --name aks-cluster-${{ github.event.inputs.environment }} --overwrite-existing
 
       - name: Dry Run
-        if: ${{ github.event.inputs.dry_run == 'true' }}
-        run: echo "Would delete apps: ${{ github.event.inputs.apps_to_delete }}"
+        if: ${{ github.event.inputs.dry_run == &#x27;true&#x27; }}
+        run: echo &quot;Would delete apps: ${{ github.event.inputs.apps_to_delete }}&quot;
 
       - name: Confirm and Delete
-        if: ${{ github.event.inputs.dry_run == 'false' &amp;&amp; github.event.inputs.confirm == 'true' }}
+        if: ${{ github.event.inputs.dry_run == &#x27;false&#x27; &amp;&amp; github.event.inputs.confirm == &#x27;true&#x27; }}
         run: |
-          for app in $(echo "${{ github.event.inputs.apps_to_delete }}" | tr ',' ' '); do
+          for app in $(echo &quot;${{ github.event.inputs.apps_to_delete }}&quot; | tr &#x27;,&#x27; &#x27; &#x27;); do
             kubectl delete deployment $app || true
             kubectl delete service $app || true
           done
@@ -1784,26 +2005,75 @@ jobs:
 
 ---
 
-## 5. Secrets Management in GitHub Actions
+## 5. hpa-stress-test.yaml Deep Dive
+
+The `hpa-stress-test.yaml` workflow validates **Horizontal Pod Autoscaler (HPA)** behavior on AKS using **Fortio** to generate load.
+
+### Workflow Inputs
+
+- **cluster_name**: AKS cluster name.  
+- **resource_group**: Azure resource group containing the AKS cluster.  
+- **namespace**: Kubernetes namespace to test (default: `default`).  
+- **service_name**: Service to target (e.g., `nodejs-service`).  
+- **service_port**: Service port (e.g., `3000`).  
+- **load_duration_seconds**: Total duration of load (default: `120`).  
+- **qps**: Queries per second (default: `50`).  
+
+### Workflow Steps
+
+1. Azure Login (`AZURE_CREDENTIALS`).  
+2. Set kubectl context with `az aks get-credentials`.  
+3. Verify the target service exists.  
+4. Deploy Fortio pod/job if required.  
+5. Run Fortio load test for the specified duration and QPS.  
+6. Observe HPA scaling events (replica count increase).  
+7. Wait for stabilization and observe scale-down.  
+8. Collect logs and results.  
+
+### Example Snippet
+
+```yaml
+jobs:
+  hpa-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set kubectl context
+        run: az aks get-credentials --resource-group ${{ github.event.inputs.resource_group }} --name ${{ github.event.inputs.cluster_name }} --overwrite-existing
+
+      - name: Run Fortio Load Test
+        run: |
+          kubectl run fortio --image=fortio/fortio --restart=Never --             load -qps=${{ github.event.inputs.qps }} -t=${{ github.event.inputs.load_duration_seconds }}s http://${{ github.event.inputs.service_name }}:${{ github.event.inputs.service_port }}
+```
+
+This ensures HPA rules are tested under real load.
+
+---
+
+## 6. Secrets Management in GitHub Actions
 
 Secrets are critical to secure workflows. This repository uses GitHub Secrets for:
 
-- **AWS_ACCESS_KEY_ID** and **AWS_SECRET_ACCESS_KEY**: For Terraform and kubectl authentication.  
-- **DOCKER_USERNAME** and **DOCKER_PASSWORD**: For pulling/pushing images.  
+- **AZURE_CREDENTIALS**: Service Principal JSON for Azure authentication.  
+- **DOCKER_USERNAME** and **DOCKER_PASSWORD**: For pulling/pushing DockerHub images.  
+- **ACR_USERNAME** and **ACR_PASSWORD** (optional): For accessing private Azure Container Registry.  
 
 Secrets are injected into workflow environments at runtime and masked in logs. Example:
 
 ```yaml
 env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 ```
 
 By centralizing secrets in GitHub, they are versioned, auditable, and protected from accidental leaks.
 
 ---
 
-## 6. Conditionals and Parameter-Driven Design
+## 7. Conditionals and Parameter-Driven Design
 
 A unique feature of these workflows is conditional execution. Jobs run only if their associated flags are set. 
 This makes the pipeline flexible and efficient.
@@ -1811,7 +2081,7 @@ This makes the pipeline flexible and efficient.
 ### Example Conditional
 
 ```yaml
-if: ${{ github.event.inputs.run_application_deployment == 'true' }}
+if: ${{ github.event.inputs.run_application_deployment == &#x27;true&#x27; }}
 ```
 
 This ensures the deployment job is skipped unless explicitly requested.
@@ -1824,7 +2094,7 @@ This ensures the deployment job is skipped unless explicitly requested.
 
 ---
 
-## 7. Error Handling and Retry Strategies
+## 8. Error Handling and Retry Strategies
 
 Workflows fail-fast by default. If Terraform or kubectl encounters an error, the job halts, preventing downstream steps from running.
 
@@ -1842,11 +2112,11 @@ Workflows fail-fast by default. If Terraform or kubectl encounters an error, the
 
 ---
 
-## 8. Reusability and Optimization
+## 9. Reusability and Optimization
 
 ### Reusable Actions
 
-The workflows use both official actions (checkout, setup-terraform) and third-party actions (Trivy scan). 
+The workflows use both official actions (checkout, setup-terraform, azure/login) and third-party actions (Trivy, Fortio). 
 These can be replaced or extended with custom composite actions.
 
 ### Matrix Strategy
@@ -1868,12 +2138,12 @@ To optimize performance, Terraform plugin directories or Docker layers can be ca
   uses: actions/cache@v3
   with:
     path: ~/.terraform.d/plugin-cache
-    key: ${{ runner.os }}-terraform-${{ hashFiles('**/*.tf') }}
+    key: ${{ runner.os }}-terraform-${{ hashFiles(&#x27;**/*.tf&#x27;) }}
 ```
 
 ---
 
-## 9. Best Practices for GitHub Actions
+## 10. Best Practices for GitHub Actions
 
 - **Use Environment Protection Rules**: Require approvals before deploying to production.  
 - **Limit Secrets Access**: Scope secrets to environments where they are needed.  
@@ -1883,7 +2153,7 @@ To optimize performance, Terraform plugin directories or Docker layers can be ca
 
 ---
 
-## 10. Case Studies
+## 11. Case Studies
 
 ### Case: Scan Only
 Inputs: `run_security_scan=true`, others false.  
@@ -1891,19 +2161,27 @@ Workflow runs Trivy and Terraform validate, then stops.
 
 ### Case: Infra Only
 Inputs: `run_terraform=true`, `action=apply`.  
-Workflow provisions infra but does not deploy apps.
+Workflow provisions AKS infra but does not deploy apps.
 
 ### Case: Apps Only
 Inputs: `run_application_deployment=true`.  
-Workflow deploys apps onto an existing cluster.
+Workflow deploys apps onto an existing AKS cluster.
 
 ### Case: Full Deploy
 All flags true, `action=apply`.  
 Workflow scans, provisions infra, and deploys apps.
 
+### Case: Delete Apps
+Inputs: `apps_to_delete`, `dry_run=false`, `confirm=true`.  
+Workflow deletes the specified apps from AKS safely.
+
+### Case: HPA Stress Test
+Inputs: cluster_name, resource_group, namespace, service_name, service_port, qps, duration.  
+Workflow runs Fortio load test and observes HPA scale-up/scale-down.
+
 ---
 
-## 11. Future Enhancements
+## 12. Future Enhancements
 
 Potential improvements include:
 
@@ -1915,10 +2193,10 @@ Potential improvements include:
 
 ---
 
-## 12. Conclusion
+## 13. Conclusion
 
 GitHub Actions in this repository provides the glue that binds Terraform and Kubernetes into a cohesive pipeline. 
-It enables developers to deploy infrastructure, applications, and even run security scans with a single click. 
+It enables developers to deploy infrastructure, applications, delete workloads, and even run stress tests with a single click. 
 By using parameter-driven design, the workflows remain flexible and reusable. Safety features like conditionals, dry runs, 
 and confirmations protect against mistakes.
 
@@ -1926,13 +2204,38 @@ With best practices applied—such as secret management, environment protection,
 can scale to production-grade environments. Future enhancements like reusable workflows and observability integrations 
 can further strengthen the pipeline.
 
-In short, GitHub Actions transforms this repository into a **self-service deployment system** for Kubernetes, 
+In short, GitHub Actions transforms this repository into a **self-service deployment system** for Kubernetes on Azure, 
 bringing speed, safety, and simplicity to DevOps teams.
 
 ---
 
+## 📑 Documentation Navigation
 
-# DELETE_WORKFLOW_DETAILED.md
+- [README.md](../README.md) – Root project overview  
+- [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
+- [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance  
+- [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
+
+🔗 Extras:  
+- [HANDBOOK.html](./HANDBOOK.html) – Web-friendly version  
+- [HANDBOOK_QUICKSTART.pdf](./HANDBOOK_QUICKSTART.pdf) – Quickstart summary (2–3 pages)  
+- [HANDBOOK_CHEATSHEET.pdf](./HANDBOOK_CHEATSHEET.pdf) – 1-page cheatsheet  
+- [HANDBOOK_CHEATSHEET_GRAPHICAL.pdf](./HANDBOOK_CHEATSHEET_GRAPHICAL.pdf) – Visual cheatsheet with diagram  
+- [HANDBOOK_FULL_PRESENTATION.pptx](./HANDBOOK_FULL_PRESENTATION.pptx) – Technical slide deck  
+- [HANDBOOK_EXECUTIVE_PRESENTATION.pptx](./HANDBOOK_EXECUTIVE_PRESENTATION.pptx) – Executive-friendly deck  
+
+---
+
+
+---
+
+# Source: DELETE_WORKFLOW_DETAILED.md
 
 # 🗑️ Delete Workflow Detailed Guide (Expanded Version)
 
@@ -1976,17 +2279,17 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment (dev/test)"
+        description: &quot;Target environment (dev/test)&quot;
         required: true
       apps_to_delete:
-        description: "Comma-separated list of apps to delete"
+        description: &quot;Comma-separated list of apps to delete&quot;
         required: true
       dry_run:
-        description: "Simulate deletions without performing them"
-        default: "true"
+        description: &quot;Simulate deletions without performing them&quot;
+        default: &quot;true&quot;
       confirm:
-        description: "Must be set to true to actually delete apps"
-        default: "false"
+        description: &quot;Must be set to true to actually delete apps&quot;
+        default: &quot;false&quot;
 ```
 
 This input design emphasizes clarity: no deletions can occur unless a developer provides all required information.
@@ -1995,10 +2298,11 @@ This input design emphasizes clarity: no deletions can occur unless a developer 
 
 The workflow consists of a single job with multiple steps:
 
-1. **Configure kubectl**: Connects to the cluster for the specified environment.  
-2. **Dry Run Step**: If `dry_run=true`, prints which apps *would* be deleted.  
-3. **Confirm Step**: If `confirm=false`, aborts with a safety message.  
-4. **Deletion Step**: If both conditions are met, executes `kubectl delete`.  
+1. **Azure Login**: Authenticate with `AZURE_CREDENTIALS`.  
+2. **Set kubectl context**: Connect to the AKS cluster for the specified environment using `az aks get-credentials`.  
+3. **Dry Run Step**: If `dry_run=true`, prints which apps *would* be deleted.  
+4. **Confirm Step**: If `confirm=false`, aborts with a safety message.  
+5. **Deletion Step**: If both conditions are met, executes `kubectl delete`.  
 
 This sequence ensures transparency and control.
 
@@ -2007,7 +2311,7 @@ This sequence ensures transparency and control.
 ## 4. Parameters in Detail
 
 ### `environment`
-Defines which cluster context is used. By separating dev and test environments, the workflow prevents accidental cross-environment deletions. 
+Defines which AKS cluster context is used. By separating dev and test environments, the workflow prevents accidental cross-environment deletions. 
 For example, removing apps from dev does not affect test.
 
 ### `apps_to_delete`
@@ -2031,10 +2335,18 @@ The final safeguard. Even if dry_run=false, no deletions happen unless `confirm=
 The deletion commands are simple but effective:
 
 ```yaml
+- name: Azure Login
+  uses: azure/login@v1
+  with:
+    creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+- name: Set kubectl context
+  run: az aks get-credentials --resource-group aks-cluster-${{ github.event.inputs.environment }}-rg --name aks-cluster-${{ github.event.inputs.environment }} --overwrite-existing
+
 - name: Confirm and Delete
-  if: ${{ github.event.inputs.dry_run == 'false' &amp;&amp; github.event.inputs.confirm == 'true' }}
+  if: ${{ github.event.inputs.dry_run == &#x27;false&#x27; &amp;&amp; github.event.inputs.confirm == &#x27;true&#x27; }}
   run: |
-    for app in $(echo "${{ github.event.inputs.apps_to_delete }}" | tr ',' ' '); do
+    for app in $(echo &quot;${{ github.event.inputs.apps_to_delete }}&quot; | tr &#x27;,&#x27; &#x27; &#x27;); do
       kubectl delete deployment $app || true
       kubectl delete service $app || true
     done
@@ -2042,6 +2354,8 @@ The deletion commands are simple but effective:
 
 ### Explanation
 
+- `azure/login` authenticates with Azure using `AZURE_CREDENTIALS`.  
+- `az aks get-credentials` sets the kubectl context for the right cluster.  
 - The `for app in ...` loop iterates over each app provided.  
 - `kubectl delete deployment $app` removes the app’s deployment.  
 - `kubectl delete service $app` removes the associated service.  
@@ -2058,7 +2372,7 @@ kubectl delete deployment nginx
 kubectl delete service nginx
 ```
 
-This results in Node.js and NGINX being safely removed from the cluster.
+This results in Node.js and NGINX being safely removed from the AKS cluster.
 
 ---
 
@@ -2071,7 +2385,7 @@ Deletion operations may encounter errors. Common scenarios include:
 - **Partial Deletions**: Sometimes, the Deployment may exist while the Service does not (or vice versa). The loop handles each 
   independently, ensuring partial resources are removed.  
 - **Cluster Connection Errors**: If kubeconfig is not configured correctly, the workflow fails fast at the connection step.  
-- **Permissions Issues**: If RBAC prevents deletion, the workflow surfaces a "forbidden" error, highlighting insufficient rights.  
+- **Permissions Issues**: If RBAC prevents deletion, the workflow surfaces a &quot;forbidden&quot; error, highlighting insufficient rights.  
 
 These errors are not silent; they are visible in the GitHub Actions logs, allowing developers to take corrective action.
 
@@ -2137,7 +2451,7 @@ Result: Workflow executes `kubectl delete` commands, removing k8sGPT’s Deploym
 Security is fundamental to the deletion workflow. Recommended practices include:
 
 - **RBAC Restrictions**: Limit the service account used by GitHub Actions to only allow deleting specific namespaces.  
-- **Audit Logs**: Ensure cluster audit logging is enabled to record all deletions.  
+- **Audit Logs**: Enable AKS audit logging and forward logs to **Azure Monitor / Log Analytics** for traceability.  
 - **Namespace Isolation**: Deploy apps into separate namespaces (dev, test) to avoid cross-environment risks.  
 - **Scoped Access**: Avoid giving GitHub Actions cluster-admin rights. Use the principle of least privilege.  
 - **Confirmation Culture**: Reinforce the requirement that destructive operations require explicit intent.  
@@ -2167,7 +2481,7 @@ By separating deletion from deployment, providing dry runs, and requiring explic
 ensures that destructive actions are intentional, auditable, and recoverable.
 
 Errors are surfaced clearly, rollbacks are straightforward through manifest re-application, and security 
-practices like RBAC and audit logs provide guardrails. Case studies highlight how the workflow behaves in 
+practices like RBAC, Azure Monitor, and audit logs provide guardrails. Case studies highlight how the workflow behaves in 
 different scenarios, reinforcing its reliability.
 
 Ultimately, this workflow embodies DevOps maturity: empowering developers to remove applications when needed, 
@@ -2176,8 +2490,34 @@ and notifications, it can evolve into a gold-standard approach for Kubernetes ap
 
 ---
 
+## 📑 Documentation Navigation
 
-# BEST_PRACTICES.md
+- [README.md](../README.md) – Root project overview  
+- [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
+- [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance  
+- [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
+
+🔗 Extras:  
+- [HANDBOOK.html](./HANDBOOK.html) – Web-friendly version  
+- [HANDBOOK_QUICKSTART.pdf](./HANDBOOK_QUICKSTART.pdf) – Quickstart summary (2–3 pages)  
+- [HANDBOOK_CHEATSHEET.pdf](./HANDBOOK_CHEATSHEET.pdf) – 1-page cheatsheet  
+- [HANDBOOK_CHEATSHEET_GRAPHICAL.pdf](./HANDBOOK_CHEATSHEET_GRAPHICAL.pdf) – Visual cheatsheet with diagram  
+- [HANDBOOK_FULL_PRESENTATION.pptx](./HANDBOOK_FULL_PRESENTATION.pptx) – Technical slide deck  
+- [HANDBOOK_EXECUTIVE_PRESENTATION.pptx](./HANDBOOK_EXECUTIVE_PRESENTATION.pptx) – Executive-friendly deck  
+
+---
+
+
+---
+
+# Source: BEST_PRACTICES.md
+
 
 # ✅ Best Practices Guide (Expanded Version)
 
@@ -2201,8 +2541,7 @@ security controls ensure that vulnerabilities do not compromise reliability.
 
 ### 2.1 Secrets Management
 
-- **Use GitHub Secrets**: Store sensitive values such as `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `DOCKER_USERNAME`, 
-  and `DOCKER_PASSWORD` in GitHub Secrets.  
+- **Use GitHub Secrets**: Store sensitive values such as `AZURE_CREDENTIALS` (Service Principal JSON for Azure login), `DOCKER_USERNAME`, and `DOCKER_PASSWORD` in GitHub Secrets.  
 - **Avoid Hardcoding**: Never place secrets directly in workflows, Terraform, or Kubernetes manifests.  
 - **Rotate Regularly**: Rotate credentials periodically to reduce the blast radius of leaks.  
 - **Mask Secrets**: GitHub masks secret values in logs by default; avoid echoing secrets to stdout.  
@@ -2251,7 +2590,7 @@ This ensures workloads do not interfere with each other and resources scale appr
 ### 3.2 Terraform Modularization
 
 Monolithic Terraform configurations can become unmanageable.  
-- Break down Terraform into modules: `network`, `eks-cluster`, `node-groups`, `apps`.  
+- Break down Terraform into modules: `network`, `aks-cluster`, `node-pools`, `apps`.  
 - Reuse modules across environments.  
 - Version modules to track changes over time.  
 
@@ -2332,8 +2671,8 @@ Temporary environments can be spun up quickly, making this a cost-efficient stra
 
 ### 5.3 Spot and Reserved Instances
 
-- Use **spot instances** for non-critical dev workloads.  
-- Use **reserved instances** or **savings plans** for production to save long-term costs.  
+- Use **Azure Spot VMs** for non-critical dev workloads.  
+- Use **Azure Reserved VM Instances** or **savings plans** for production to save long-term costs.  
 
 ### 5.4 Cost Monitoring
 
@@ -2396,7 +2735,7 @@ This repository can evolve further with advanced practices:
 - **AI-Ops**: Use AI-driven monitoring to predict failures.  
 - **Predictive Scaling**: Anticipate traffic spikes before they happen.  
 - **Automated Compliance**: Continuous checks against policies.  
-- **Multi-Cloud Expansion**: Support GCP and Azure alongside AWS.  
+- **Multi-Cloud Expansion**: Azure is the primary platform, with optional support for AWS and GCP.  
 - **Self-Service Portals**: Developers request environments via a UI that triggers workflows.  
 
 These improvements transform the repository into an enterprise-grade platform.
@@ -2416,5 +2755,33 @@ Ultimately, this repository is not just about deploying Kubernetes apps—it is 
 With continuous improvement, it can serve as a blueprint for modern DevOps practices in any organization.
 
 ---
+
+## 📑 Documentation Navigation
+
+- [README.md](../README.md) – Root project overview  
+- [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
+- [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance  
+- [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
+
+🔗 Extras:  
+- [HANDBOOK.html](./HANDBOOK.html) – Web-friendly version  
+- [HANDBOOK_QUICKSTART.pdf](./HANDBOOK_QUICKSTART.pdf) – Quickstart summary (2–3 pages)  
+- [HANDBOOK_CHEATSHEET.pdf](./HANDBOOK_CHEATSHEET.pdf) – 1-page cheatsheet  
+- [HANDBOOK_CHEATSHEET_GRAPHICAL.pdf](./HANDBOOK_CHEATSHEET_GRAPHICAL.pdf) – Visual cheatsheet with diagram  
+- [HANDBOOK_FULL_PRESENTATION.pptx](./HANDBOOK_FULL_PRESENTATION.pptx) – Technical slide deck  
+- [HANDBOOK_EXECUTIVE_PRESENTATION.pptx](./HANDBOOK_EXECUTIVE_PRESENTATION.pptx) – Executive-friendly deck  
+
+---
+
+
+---
+
 </pre>
-</body></html>
+</body>
+</html>

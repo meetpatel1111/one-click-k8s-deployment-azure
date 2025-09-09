@@ -21,8 +21,7 @@ security controls ensure that vulnerabilities do not compromise reliability.
 
 ### 2.1 Secrets Management
 
-- **Use GitHub Secrets**: Store sensitive values such as `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `DOCKER_USERNAME`, 
-  and `DOCKER_PASSWORD` in GitHub Secrets.  
+- **Use GitHub Secrets**: Store sensitive values such as `AZURE_CREDENTIALS` (Service Principal JSON for Azure login), `DOCKER_USERNAME`, and `DOCKER_PASSWORD` in GitHub Secrets.  
 - **Avoid Hardcoding**: Never place secrets directly in workflows, Terraform, or Kubernetes manifests.  
 - **Rotate Regularly**: Rotate credentials periodically to reduce the blast radius of leaks.  
 - **Mask Secrets**: GitHub masks secret values in logs by default; avoid echoing secrets to stdout.  
@@ -71,7 +70,7 @@ This ensures workloads do not interfere with each other and resources scale appr
 ### 3.2 Terraform Modularization
 
 Monolithic Terraform configurations can become unmanageable.  
-- Break down Terraform into modules: `network`, `eks-cluster`, `node-groups`, `apps`.  
+- Break down Terraform into modules: `network`, `aks-cluster`, `node-pools`, `apps`.  
 - Reuse modules across environments.  
 - Version modules to track changes over time.  
 
@@ -152,8 +151,8 @@ Temporary environments can be spun up quickly, making this a cost-efficient stra
 
 ### 5.3 Spot and Reserved Instances
 
-- Use **spot instances** for non-critical dev workloads.  
-- Use **reserved instances** or **savings plans** for production to save long-term costs.  
+- Use **Azure Spot VMs** for non-critical dev workloads.  
+- Use **Azure Reserved VM Instances** or **savings plans** for production to save long-term costs.  
 
 ### 5.4 Cost Monitoring
 
@@ -216,7 +215,7 @@ This repository can evolve further with advanced practices:
 - **AI-Ops**: Use AI-driven monitoring to predict failures.  
 - **Predictive Scaling**: Anticipate traffic spikes before they happen.  
 - **Automated Compliance**: Continuous checks against policies.  
-- **Multi-Cloud Expansion**: Support GCP and Azure alongside AWS.  
+- **Multi-Cloud Expansion**: Azure is the primary platform, with optional support for AWS and GCP.  
 - **Self-Service Portals**: Developers request environments via a UI that triggers workflows.  
 
 These improvements transform the repository into an enterprise-grade platform.
@@ -242,12 +241,12 @@ With continuous improvement, it can serve as a blueprint for modern DevOps pract
 - [README.md](../README.md) – Root project overview  
 - [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
 - [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
-- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation (~400 lines)  
-- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive (~400 lines)  
-- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment (~400 lines)  
-- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation (~400 lines)  
-- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow (~400 lines)  
-- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance (~400 lines)  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance  
 - [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
 
 🔗 Extras:  

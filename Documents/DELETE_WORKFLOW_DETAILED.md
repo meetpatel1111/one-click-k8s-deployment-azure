@@ -1,4 +1,3 @@
-
 # 🗑️ Delete Workflow Detailed Guide (Expanded Version)
 
 ## 1. Introduction
@@ -60,10 +59,11 @@ This input design emphasizes clarity: no deletions can occur unless a developer 
 
 The workflow consists of a single job with multiple steps:
 
-1. **Configure kubectl**: Connects to the cluster for the specified environment.  
-2. **Dry Run Step**: If `dry_run=true`, prints which apps *would* be deleted.  
-3. **Confirm Step**: If `confirm=false`, aborts with a safety message.  
-4. **Deletion Step**: If both conditions are met, executes `kubectl delete`.  
+1. **Azure Login**: Authenticate with `AZURE_CREDENTIALS`.  
+2. **Set kubectl context**: Connect to the AKS cluster for the specified environment using `az aks get-credentials`.  
+3. **Dry Run Step**: If `dry_run=true`, prints which apps *would* be deleted.  
+4. **Confirm Step**: If `confirm=false`, aborts with a safety message.  
+5. **Deletion Step**: If both conditions are met, executes `kubectl delete`.  
 
 This sequence ensures transparency and control.
 
@@ -72,7 +72,7 @@ This sequence ensures transparency and control.
 ## 4. Parameters in Detail
 
 ### `environment`
-Defines which cluster context is used. By separating dev and test environments, the workflow prevents accidental cross-environment deletions. 
+Defines which AKS cluster context is used. By separating dev and test environments, the workflow prevents accidental cross-environment deletions. 
 For example, removing apps from dev does not affect test.
 
 ### `apps_to_delete`
@@ -96,6 +96,14 @@ The final safeguard. Even if dry_run=false, no deletions happen unless `confirm=
 The deletion commands are simple but effective:
 
 ```yaml
+- name: Azure Login
+  uses: azure/login@v1
+  with:
+    creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+- name: Set kubectl context
+  run: az aks get-credentials --resource-group aks-cluster-${{ github.event.inputs.environment }}-rg --name aks-cluster-${{ github.event.inputs.environment }} --overwrite-existing
+
 - name: Confirm and Delete
   if: ${{ github.event.inputs.dry_run == 'false' && github.event.inputs.confirm == 'true' }}
   run: |
@@ -107,6 +115,8 @@ The deletion commands are simple but effective:
 
 ### Explanation
 
+- `azure/login` authenticates with Azure using `AZURE_CREDENTIALS`.  
+- `az aks get-credentials` sets the kubectl context for the right cluster.  
 - The `for app in ...` loop iterates over each app provided.  
 - `kubectl delete deployment $app` removes the app’s deployment.  
 - `kubectl delete service $app` removes the associated service.  
@@ -123,7 +133,7 @@ kubectl delete deployment nginx
 kubectl delete service nginx
 ```
 
-This results in Node.js and NGINX being safely removed from the cluster.
+This results in Node.js and NGINX being safely removed from the AKS cluster.
 
 ---
 
@@ -202,7 +212,7 @@ Result: Workflow executes `kubectl delete` commands, removing k8sGPT’s Deploym
 Security is fundamental to the deletion workflow. Recommended practices include:
 
 - **RBAC Restrictions**: Limit the service account used by GitHub Actions to only allow deleting specific namespaces.  
-- **Audit Logs**: Ensure cluster audit logging is enabled to record all deletions.  
+- **Audit Logs**: Enable AKS audit logging and forward logs to **Azure Monitor / Log Analytics** for traceability.  
 - **Namespace Isolation**: Deploy apps into separate namespaces (dev, test) to avoid cross-environment risks.  
 - **Scoped Access**: Avoid giving GitHub Actions cluster-admin rights. Use the principle of least privilege.  
 - **Confirmation Culture**: Reinforce the requirement that destructive operations require explicit intent.  
@@ -232,7 +242,7 @@ By separating deletion from deployment, providing dry runs, and requiring explic
 ensures that destructive actions are intentional, auditable, and recoverable.
 
 Errors are surfaced clearly, rollbacks are straightforward through manifest re-application, and security 
-practices like RBAC and audit logs provide guardrails. Case studies highlight how the workflow behaves in 
+practices like RBAC, Azure Monitor, and audit logs provide guardrails. Case studies highlight how the workflow behaves in 
 different scenarios, reinforcing its reliability.
 
 Ultimately, this workflow embodies DevOps maturity: empowering developers to remove applications when needed, 
@@ -246,12 +256,12 @@ and notifications, it can evolve into a gold-standard approach for Kubernetes ap
 - [README.md](../README.md) – Root project overview  
 - [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
 - [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
-- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation (~400 lines)  
-- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive (~400 lines)  
-- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment (~400 lines)  
-- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation (~400 lines)  
-- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow (~400 lines)  
-- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance (~400 lines)  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance  
 - [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
 
 🔗 Extras:  

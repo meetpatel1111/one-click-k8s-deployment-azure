@@ -1,4 +1,3 @@
-
 # ⚙️ GitHub Actions Detailed Guide (Expanded Version)
 
 ## 1. Introduction
@@ -107,6 +106,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
@@ -143,8 +147,13 @@ jobs:
     if: ${{ github.event.inputs.run_application_deployment == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Configure kubectl
-        run: aws eks update-kubeconfig --name mycluster --region us-east-1
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set kubectl context
+        run: az aks get-credentials --resource-group aks-cluster-${{ github.event.inputs.environment }}-rg --name aks-cluster-${{ github.event.inputs.environment }} --overwrite-existing
 
       - name: Deploy Node.js App
         run: kubectl apply -f k8s/nodejs.yaml
@@ -184,8 +193,13 @@ jobs:
   delete:
     runs-on: ubuntu-latest
     steps:
-      - name: Configure kubectl
-        run: aws eks update-kubeconfig --name mycluster --region us-east-1
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set kubectl context
+        run: az aks get-credentials --resource-group aks-cluster-${{ github.event.inputs.environment }}-rg --name aks-cluster-${{ github.event.inputs.environment }} --overwrite-existing
 
       - name: Dry Run
         if: ${{ github.event.inputs.dry_run == 'true' }}
@@ -202,26 +216,75 @@ jobs:
 
 ---
 
-## 5. Secrets Management in GitHub Actions
+## 5. hpa-stress-test.yaml Deep Dive
+
+The `hpa-stress-test.yaml` workflow validates **Horizontal Pod Autoscaler (HPA)** behavior on AKS using **Fortio** to generate load.
+
+### Workflow Inputs
+
+- **cluster_name**: AKS cluster name.  
+- **resource_group**: Azure resource group containing the AKS cluster.  
+- **namespace**: Kubernetes namespace to test (default: `default`).  
+- **service_name**: Service to target (e.g., `nodejs-service`).  
+- **service_port**: Service port (e.g., `3000`).  
+- **load_duration_seconds**: Total duration of load (default: `120`).  
+- **qps**: Queries per second (default: `50`).  
+
+### Workflow Steps
+
+1. Azure Login (`AZURE_CREDENTIALS`).  
+2. Set kubectl context with `az aks get-credentials`.  
+3. Verify the target service exists.  
+4. Deploy Fortio pod/job if required.  
+5. Run Fortio load test for the specified duration and QPS.  
+6. Observe HPA scaling events (replica count increase).  
+7. Wait for stabilization and observe scale-down.  
+8. Collect logs and results.  
+
+### Example Snippet
+
+```yaml
+jobs:
+  hpa-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set kubectl context
+        run: az aks get-credentials --resource-group ${{ github.event.inputs.resource_group }} --name ${{ github.event.inputs.cluster_name }} --overwrite-existing
+
+      - name: Run Fortio Load Test
+        run: |
+          kubectl run fortio --image=fortio/fortio --restart=Never --             load -qps=${{ github.event.inputs.qps }} -t=${{ github.event.inputs.load_duration_seconds }}s http://${{ github.event.inputs.service_name }}:${{ github.event.inputs.service_port }}
+```
+
+This ensures HPA rules are tested under real load.
+
+---
+
+## 6. Secrets Management in GitHub Actions
 
 Secrets are critical to secure workflows. This repository uses GitHub Secrets for:
 
-- **AWS_ACCESS_KEY_ID** and **AWS_SECRET_ACCESS_KEY**: For Terraform and kubectl authentication.  
-- **DOCKER_USERNAME** and **DOCKER_PASSWORD**: For pulling/pushing images.  
+- **AZURE_CREDENTIALS**: Service Principal JSON for Azure authentication.  
+- **DOCKER_USERNAME** and **DOCKER_PASSWORD**: For pulling/pushing DockerHub images.  
+- **ACR_USERNAME** and **ACR_PASSWORD** (optional): For accessing private Azure Container Registry.  
 
 Secrets are injected into workflow environments at runtime and masked in logs. Example:
 
 ```yaml
 env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 ```
 
 By centralizing secrets in GitHub, they are versioned, auditable, and protected from accidental leaks.
 
 ---
 
-## 6. Conditionals and Parameter-Driven Design
+## 7. Conditionals and Parameter-Driven Design
 
 A unique feature of these workflows is conditional execution. Jobs run only if their associated flags are set. 
 This makes the pipeline flexible and efficient.
@@ -242,7 +305,7 @@ This ensures the deployment job is skipped unless explicitly requested.
 
 ---
 
-## 7. Error Handling and Retry Strategies
+## 8. Error Handling and Retry Strategies
 
 Workflows fail-fast by default. If Terraform or kubectl encounters an error, the job halts, preventing downstream steps from running.
 
@@ -260,11 +323,11 @@ Workflows fail-fast by default. If Terraform or kubectl encounters an error, the
 
 ---
 
-## 8. Reusability and Optimization
+## 9. Reusability and Optimization
 
 ### Reusable Actions
 
-The workflows use both official actions (checkout, setup-terraform) and third-party actions (Trivy scan). 
+The workflows use both official actions (checkout, setup-terraform, azure/login) and third-party actions (Trivy, Fortio). 
 These can be replaced or extended with custom composite actions.
 
 ### Matrix Strategy
@@ -291,7 +354,7 @@ To optimize performance, Terraform plugin directories or Docker layers can be ca
 
 ---
 
-## 9. Best Practices for GitHub Actions
+## 10. Best Practices for GitHub Actions
 
 - **Use Environment Protection Rules**: Require approvals before deploying to production.  
 - **Limit Secrets Access**: Scope secrets to environments where they are needed.  
@@ -301,7 +364,7 @@ To optimize performance, Terraform plugin directories or Docker layers can be ca
 
 ---
 
-## 10. Case Studies
+## 11. Case Studies
 
 ### Case: Scan Only
 Inputs: `run_security_scan=true`, others false.  
@@ -309,19 +372,27 @@ Workflow runs Trivy and Terraform validate, then stops.
 
 ### Case: Infra Only
 Inputs: `run_terraform=true`, `action=apply`.  
-Workflow provisions infra but does not deploy apps.
+Workflow provisions AKS infra but does not deploy apps.
 
 ### Case: Apps Only
 Inputs: `run_application_deployment=true`.  
-Workflow deploys apps onto an existing cluster.
+Workflow deploys apps onto an existing AKS cluster.
 
 ### Case: Full Deploy
 All flags true, `action=apply`.  
 Workflow scans, provisions infra, and deploys apps.
 
+### Case: Delete Apps
+Inputs: `apps_to_delete`, `dry_run=false`, `confirm=true`.  
+Workflow deletes the specified apps from AKS safely.
+
+### Case: HPA Stress Test
+Inputs: cluster_name, resource_group, namespace, service_name, service_port, qps, duration.  
+Workflow runs Fortio load test and observes HPA scale-up/scale-down.
+
 ---
 
-## 11. Future Enhancements
+## 12. Future Enhancements
 
 Potential improvements include:
 
@@ -333,10 +404,10 @@ Potential improvements include:
 
 ---
 
-## 12. Conclusion
+## 13. Conclusion
 
 GitHub Actions in this repository provides the glue that binds Terraform and Kubernetes into a cohesive pipeline. 
-It enables developers to deploy infrastructure, applications, and even run security scans with a single click. 
+It enables developers to deploy infrastructure, applications, delete workloads, and even run stress tests with a single click. 
 By using parameter-driven design, the workflows remain flexible and reusable. Safety features like conditionals, dry runs, 
 and confirmations protect against mistakes.
 
@@ -344,7 +415,7 @@ With best practices applied—such as secret management, environment protection,
 can scale to production-grade environments. Future enhancements like reusable workflows and observability integrations 
 can further strengthen the pipeline.
 
-In short, GitHub Actions transforms this repository into a **self-service deployment system** for Kubernetes, 
+In short, GitHub Actions transforms this repository into a **self-service deployment system** for Kubernetes on Azure, 
 bringing speed, safety, and simplicity to DevOps teams.
 
 ---
@@ -354,12 +425,12 @@ bringing speed, safety, and simplicity to DevOps teams.
 - [README.md](../README.md) – Root project overview  
 - [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
 - [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
-- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation (~400 lines)  
-- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive (~400 lines)  
-- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment (~400 lines)  
-- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation (~400 lines)  
-- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow (~400 lines)  
-- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance (~400 lines)  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance  
 - [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
 
 🔗 Extras:  

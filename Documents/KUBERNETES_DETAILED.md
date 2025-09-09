@@ -20,14 +20,14 @@ scalable, and easily extensible.
 
 ## 2. Kubernetes Cluster Overview
 
-The cluster is provisioned by Terraform, typically through AWS EKS. Once the control plane and worker nodes are created, 
-GitHub Actions connects to the cluster using a kubeconfig file. At this point, Kubernetes becomes the orchestration engine 
+The cluster is provisioned by Terraform, typically through Azure AKS. Once the control plane and worker nodes are created, 
+GitHub Actions connects to the cluster using a kubeconfig file. At this point, Kubernetes becomes the orchestration engine. The workflow uses `az aks get-credentials` to configure kubectl context 
 for deploying applications.
 
 The cluster architecture includes:
-- **Control Plane**: Managed by the cloud provider (EKS).  
+- **Control Plane**: Managed by the cloud provider (AKS).  
 - **Worker Nodes**: Provisioned in node groups defined by tfvars.  
-- **Networking**: VPC and subnets configured by Terraform.  
+- **Networking**: VNet and subnets configured by Terraform.  
 - **Load Balancers**: Created dynamically by Kubernetes Services of type `LoadBalancer`.  
 
 This design ensures that applications deployed to the cluster are immediately reachable from outside.
@@ -410,12 +410,12 @@ but *how* and *why*. It equips teams to extend the setup, troubleshoot effective
 - [README.md](../README.md) – Root project overview  
 - [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
 - [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
-- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation (~400 lines)  
-- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive (~400 lines)  
-- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment (~400 lines)  
-- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation (~400 lines)  
-- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow (~400 lines)  
-- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance (~400 lines)  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance  
 - [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
 
 🔗 Extras:  

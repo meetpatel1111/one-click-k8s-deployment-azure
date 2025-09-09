@@ -17,9 +17,10 @@ This guide explains **how deployment works in all parameter combinations**, mapp
 - Parameters: `run_security_scan=false`, `run_terraform=true`, `run_application_deployment=false`
 - Steps:
   1. Checkout repo
-  2. Setup Terraform
-  3. Run `terraform <action>`
-     - If `action=apply` → Creates cluster + networking
+  2. Azure login (`AZURE_CREDENTIALS`)
+  3. Setup Terraform
+  4. Run `terraform <action>`
+     - If `action=apply` → Creates **AKS cluster + ACR + VNet + Log Analytics**
      - If `action=destroy` → Deletes all infra
      - If `action=refresh` → Updates state only
 - Apps are **not deployed**
@@ -30,8 +31,9 @@ This guide explains **how deployment works in all parameter combinations**, mapp
 - Parameters: `run_security_scan=false`, `run_terraform=false`, `run_application_deployment=true`
 - Steps:
   1. Checkout repo
-  2. Setup kubectl (auth against cluster)
-  3. Deploy apps with `kubectl apply -f manifests/`:
+  2. Azure login (`AZURE_CREDENTIALS`)
+  3. Set kubectl context (`az aks get-credentials`)
+  4. Deploy apps with `kubectl apply -f manifests/`:
      - Node.js App
      - NGINX
      - k8sGPT (provider from `provider` input)
@@ -42,8 +44,10 @@ This guide explains **how deployment works in all parameter combinations**, mapp
 ## 🔹 Case 4: Full Deployment (Infra + Apps)
 - Parameters: `run_security_scan=false`, `run_terraform=true`, `run_application_deployment=true`, `action=apply`
 - Steps:
-  1. Terraform creates cluster/networking
-  2. Kubectl deploys applications
+  1. Azure login (`AZURE_CREDENTIALS`)
+  2. Terraform provisions **AKS + ACR + VNet + Log Analytics**
+  3. Set kubectl context (`az aks get-credentials`)
+  4. Kubectl deploys applications
 - Result: Complete environment ready
 
 ---
@@ -51,16 +55,18 @@ This guide explains **how deployment works in all parameter combinations**, mapp
 ## 🔹 Case 5: Destroy Mode
 - Parameters: `action=destroy`, `run_terraform=true`
 - Steps:
-  1. Terraform deletes cluster + networking
-  2. Apps removed automatically when infra is destroyed
+  1. Azure login (`AZURE_CREDENTIALS`)
+  2. Terraform deletes AKS + networking + ACR + monitoring
+  3. Apps removed automatically when infra is destroyed
 
 ---
 
 ## 🔹 Case 6: Refresh Mode
 - Parameters: `action=refresh`, `run_terraform=true`
 - Steps:
-  1. Terraform refreshes state
-  2. No changes to infra or apps
+  1. Azure login (`AZURE_CREDENTIALS`)
+  2. Terraform refreshes state
+  3. No changes to infra or apps
 
 ---
 
@@ -68,8 +74,10 @@ This guide explains **how deployment works in all parameter combinations**, mapp
 - Example: `run_security_scan=true`, `run_terraform=true`, `run_application_deployment=true`
 - Steps:
   1. Run scans
-  2. Provision infra
-  3. Deploy apps
+  2. Azure login (`AZURE_CREDENTIALS`)
+  3. Provision infra with Terraform
+  4. Set kubectl context (`az aks get-credentials`)
+  5. Deploy apps
 
 ---
 
@@ -97,40 +105,7 @@ This guide explains **how deployment works in all parameter combinations**, mapp
 
 ## 📊 Visual Decision Flows (Mermaid)
 
-> These render natively on GitHub. If you view this in a tool that doesn't support Mermaid, copy the blocks below into a GitHub Markdown file.
-
-### Deployment Workflow (Detailed)
-
-
-### Delete Workflow (Detailed)
-
----
-
-## 📊 Visual Decision Flows (Mermaid)
-
-### Deployment Workflow (Detailed)
-
-
-
-### Delete Workflow (Detailed)
-
-
-
----
-
-## 📊 Visual Decision Flows (Mermaid)
-
-### Deployment Workflow (Detailed)
-
-
-
-### Delete Workflow (Detailed)
-
----
-
-## 📊 Visual Decision Flows (Mermaid)
-
-### Deployment Workflow (Detailed)
+### Deployment Workflow (Mermaid)
 
 ```mermaid
 flowchart TD
@@ -143,11 +118,11 @@ flowchart TD
     E -- No --> H{Deploy Applications?}
     E -- Yes --> F{Terraform Action?}
 
-    F -- apply --> F1[Terraform APPLY - init/plan/apply]
-    F -- refresh --> F2[Terraform REFRESH - state sync]
-    F -- destroy --> F3[Terraform DESTROY - delete infra]
+    F -- apply --> F1[Azure Login -> Terraform APPLY (AKS + ACR + VNet + Log Analytics)]
+    F -- refresh --> F2[Azure Login -> Terraform REFRESH - state sync]
+    F -- destroy --> F3[Azure Login -> Terraform DESTROY - delete infra]
 
-    F1 --> H
+    F1 --> G[Set kubectl context via az aks get-credentials]
     F2 --> H
     F3 --> H
 
@@ -158,7 +133,7 @@ flowchart TD
     J --> Z[End]
 ```
 
-### Delete Workflow (Detailed)
+### Delete Workflow (Mermaid)
 
 ```mermaid
 flowchart TD
@@ -177,6 +152,67 @@ flowchart TD
     H --> Z
 ```
 
+### HPA Fortio Stress Test Workflow (Mermaid)
+
+```mermaid
+flowchart TD
+  A["Start: Manual Trigger"] --> B["Azure Login (AZURE_CREDENTIALS)"]
+  B --> C["Set kubectl context (az aks get-credentials)"]
+  C --> D{"Service Exists?"}
+  D -->|No| E["Abort: Service not found"]
+  D -->|Yes| F["Deploy Fortio Job/Pod"]
+  F --> G["Execute Fortio load (QPS, duration)"]
+  G --> H["Monitor HPA & Pods"]
+  H --> I{"Scale-Up Observed?"}
+  I -->|Yes| J["Wait for Pods Running & Node Provisioning if needed"]
+  I -->|No| K["Record no-scale event"]
+  J --> L["Observe stabilization window and scale-down"]
+  K --> L
+  L --> M["Collect logs & results"]
+  M --> N["Cleanup Fortio artifacts"]
+  N --> Z["End"]
+```
+
+---
+
+## 🔎 Workflow Explanations
+
+### 1. Deployment Workflow (Detailed Explanation)
+The deployment workflow is the **main entrypoint** for provisioning infrastructure and deploying apps.  
+It supports all parameter combinations (`run_security_scan`, `run_terraform`, `run_application_deployment`, `action`).  
+
+- **Inputs**: environment, action (apply/destroy/refresh), flags for scan/deploy.  
+- **Infra provisioning**: Terraform creates AKS, ACR, VNet, Log Analytics.  
+- **App deployment**: kubectl applies manifests for Node.js, NGINX, k8sGPT.  
+- **Mixed mode**: allows combining security scan + infra + apps.  
+
+**Outcome**: An environment (dev/test) is ready with infra + apps as requested.
+
+---
+
+### 2. Delete Workflow (Detailed Explanation)
+The delete workflow safely handles app removal.  
+
+- **Inputs**: `dry_run`, `confirm`.  
+- **Modes**:  
+  - Dry Run: Lists apps that would be deleted.  
+  - Confirmed: Deletes apps with `kubectl delete`.  
+  - Invalid: No action if confirm is false.  
+
+**Outcome**: Prevents accidental deletions while allowing explicit cleanup.
+
+---
+
+### 3. HPA Fortio Stress Test Workflow (Detailed Explanation)
+This workflow runs **Fortio load tests** to validate Horizontal Pod Autoscaler (HPA) on AKS.  
+
+- **Inputs**: cluster_name, resource_group, namespace, service_name, service_port, qps, load_duration_seconds.  
+- **Steps**: Azure login, set kubectl context, ensure service exists, deploy Fortio, run load, observe HPA scaling, collect results.  
+- **Interpreting results**: observe scale-up under load, node provisioning, scale-down after stabilization.  
+- **Cleanup**: removes Fortio pods automatically.  
+
+**Outcome**: Validates HPA scaling rules and cluster autoscaler behavior under controlled load.
+
 ---
 
 ## 📑 Documentation Navigation
@@ -184,12 +220,12 @@ flowchart TD
 - [README.md](../README.md) – Root project overview  
 - [DOCUMENTATION.md](./DOCUMENTATION.md) – General documentation and explanations  
 - [DEPLOYMENT.md](./DEPLOYMENT.md) – Deployment workflow and parameter guide  
-- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation (~400 lines)  
-- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive (~400 lines)  
-- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment (~400 lines)  
-- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation (~400 lines)  
-- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow (~400 lines)  
-- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance (~400 lines)  
+- [WORKFLOW_DETAILED.md](./WORKFLOW_DETAILED.md) – Detailed workflow explanation  
+- [TERRAFORM_DETAILED.md](./TERRAFORM_DETAILED.md) – Terraform provisioning deep dive  
+- [KUBERNETES_DETAILED.md](./KUBERNETES_DETAILED.md) – Kubernetes application deployment  
+- [GITHUBACTIONS_DETAILED.md](./GITHUBACTIONS_DETAILED.md) – GitHub Actions automation  
+- [DELETE_WORKFLOW_DETAILED.md](./DELETE_WORKFLOW_DETAILED.md) – Safe deletion workflow  
+- [BEST_PRACTICES.md](./BEST_PRACTICES.md) – Security, scalability, and governance  
 - [HANDBOOK.md](./HANDBOOK.md) – Combined handbook (all docs in one)  
 
 🔗 Extras:  
