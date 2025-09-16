@@ -16,7 +16,7 @@ on:
         required: true
         default: 'default'
       service_name:
-        description: 'Target service name'
+        description: 'Target service name (host-based)'
         required: true
         default: 'nodejs-service'
         type: choice
@@ -24,15 +24,14 @@ on:
           - nodejs-service
           - nginx-service
           - k8sgpt-service
+      # path now defaults to / because you moved to host-based ingress
       path:
-        description: 'Service endpoint path'
+        description: 'Service endpoint path (use / since host-based routing)'
         required: true
-        default: '/nodejs/'
+        default: '/'
         type: choice
         options:
-          - '/nodejs/'
-          - '/nginx/'
-          - '/k8sgpt/'
+          - '/'
       qps:
         description: 'Queries per second'
         required: true
@@ -53,7 +52,6 @@ jobs:
     - name: Azure Login
       uses: azure/login@v2
       with:
-        # Use a federated workload identity or a classic SP JSON here
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     - name: Install kubectl
@@ -68,7 +66,7 @@ jobs:
           -n "${{ github.event.inputs.cluster_name }}" \
           --overwrite-existing
 
-    - name: Derive service port and app label
+    - name: Derive app label and prepare variables
       id: derive
       shell: bash
       run: |
@@ -76,40 +74,98 @@ jobs:
         SVC="${{ github.event.inputs.service_name }}"
         case "$SVC" in
           nodejs-service)
-            echo "SERVICE_PORT=3000" >> $GITHUB_ENV
             echo "APP_LABEL=nodejs-app" >> $GITHUB_ENV
+            HOST_PREFIX="nodejs"
             ;;
           nginx-service)
-            echo "SERVICE_PORT=80" >> $GITHUB_ENV
             echo "APP_LABEL=nginx" >> $GITHUB_ENV
+            HOST_PREFIX="nginx"
             ;;
           k8sgpt-service)
-            echo "SERVICE_PORT=80" >> $GITHUB_ENV
             echo "APP_LABEL=k8sgpt" >> $GITHUB_ENV
+            HOST_PREFIX="k8sgpt"
             ;;
           *)
             echo "Unknown service: $SVC" >&2
             exit 1
             ;;
         esac
+
         # Convert duration like 120s -> 120 for `timeout`
         LD="${{ github.event.inputs.load_duration }}"
         LD_NUM="${LD%s}"
         [[ "$LD_NUM" =~ ^[0-9]+$ ]] || { echo "Invalid load_duration format. Use e.g. 120s"; exit 1; }
         echo "LOAD_DURATION_SECS=$LD_NUM" >> $GITHUB_ENV
 
+        # expose HOST_PREFIX for later steps
+        echo "HOST_PREFIX=${HOST_PREFIX}" >> $GITHUB_ENV
+
+    - name: Resolve ingress LoadBalancer IP (LB_IP)
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Wait up to ~5 minutes for ingress svc to have an IP (adjust loops/timeouts as you need)
+        for i in {1..30}; do
+          LB_IP=$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+          if [ -z "$LB_IP" ]; then
+            # Some clouds use hostname instead of IP
+            LB_IP=$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+          fi
+          if [ -n "$LB_IP" ]; then
+            echo "Found ingress LB: $LB_IP"
+            break
+          fi
+          echo "Waiting for ingress LB to get an IP/hostname... ($i/30)"
+          sleep 10
+        done
+
+        if [ -z "${LB_IP:-}" ]; then
+          echo "ERROR: could not determine ingress load balancer IP/hostname. Inspect: kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide"
+          exit 1
+        fi
+
+        # Persist for other steps
+        echo "LB_IP=${LB_IP}" >> $GITHUB_ENV
+        echo "LB_IP=$LB_IP"
+
+    - name: Build public target URL (nip.io)
+      shell: bash
+      run: |
+        set -euo pipefail
+        # HOST_PREFIX set in derive step
+        TARGET_HOST="${HOST_PREFIX}.${LB_IP}.nip.io"
+        TARGET_PATH="${{ github.event.inputs.path }}"
+        # Ensure path starts with / and not double slash
+        if [[ "${TARGET_PATH}" != /* ]]; then TARGET_PATH="/${TARGET_PATH}"; fi
+        # Build final URL (http)
+        TARGET_URL="http://${TARGET_HOST}${TARGET_PATH}"
+        echo "TARGET_URL=${TARGET_URL}" >> $GITHUB_ENV
+        echo "TARGET_HOST=${TARGET_HOST}" >> $GITHUB_ENV
+        echo "TARGET_PATH=${TARGET_PATH}" >> $GITHUB_ENV
+        echo "Built target: $TARGET_URL"
+
+    - name: Sanity - DNS resolves to LB IP (debug)
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "Resolving ${TARGET_HOST} ..."
+        nslookup "${TARGET_HOST}" || host "${TARGET_HOST}" || dig +short "${TARGET_HOST}" || true
+        echo "curl -I ${TARGET_URL} (may time out if service is not ready):"
+        kubectl run -n "${{ github.event.inputs.namespace }}" --restart=Never --rm --image=appropriate/curl curlcheck -- \
+          sh -c "curl -sS -I --max-time 10 '${TARGET_URL}' || true"
+
     - name: Start Fortio Load (Scale-Up Trigger)
       shell: bash
       run: |
         set -euo pipefail
         echo "Starting Fortio load for ${{ github.event.inputs.load_duration }} at ${{ github.event.inputs.qps }} QPS"
+        # Run Fortio inside the cluster so it can watch HPA easily and generate load via the cluster's network
         kubectl run fortio-load \
           --image=fortio/fortio \
           -n "${{ github.event.inputs.namespace }}" \
           --restart=Never \
           --command -- \
-          fortio load -qps "${{ github.event.inputs.qps }}" -t "${{ github.event.inputs.load_duration }}" \
-          "http://${{ github.event.inputs.service_name }}.${{ github.event.inputs.namespace }}.svc.cluster.local:${SERVICE_PORT}${{ github.event.inputs.path }}" &
+          fortio load -qps "${{ github.event.inputs.qps }}" -t "${{ github.event.inputs.load_duration }}" "${TARGET_URL}" &
         # brief pause to ensure pod starts
         sleep 5
         kubectl get pod fortio-load -n "${{ github.event.inputs.namespace }}" || true
