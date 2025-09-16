@@ -411,33 +411,43 @@ jobs:
 
           PROVIDER="${{ github.event.inputs.provider }}"
           ENVIRONMENT="${{ github.event.inputs.environment }}"
-          # Apply Ingress (main), and k8sgpt-ingress (if present)
-          cp k8s/ingress.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/ingress.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/ingress.yaml
 
-          echo "Waiting for Ingress endpoint..."
-          INGRESS_NAME="main-ingress"
-          NAMESPACE="default"
-          for i in {1..30}; do
-            EXTERNAL_IP=$(kubectl -n "$NAMESPACE" get ingress "$INGRESS_NAME" -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          # Wait for the ingress-nginx Service LoadBalancer IP (or hostname)
+          echo "Waiting for ingress-nginx controller LoadBalancer IP..."
+          LB_SVC_NS=ingress-nginx
+          LB_SVC_NAME=ingress-nginx-controller
+          MAX_ATTEMPTS=30
+          SLEEP_SECS=10
+          EXTERNAL_IP=""
+
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            # first try ip, then hostname (some Azure setups use ip, some use hostname)
+            EXTERNAL_IP=$(kubectl -n $LB_SVC_NS get svc $LB_SVC_NAME -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
             if [ -z "$EXTERNAL_IP" ]; then
-              EXTERNAL_IP=$(kubectl -n "$NAMESPACE" get ingress "$INGRESS_NAME" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+              EXTERNAL_IP=$(kubectl -n $LB_SVC_NS get svc $LB_SVC_NAME -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
             fi
+
             if [ -n "$EXTERNAL_IP" ]; then
-              echo "Ingress ready: http://$EXTERNAL_IP"
+              echo "Found ingress controller LB: $EXTERNAL_IP"
               break
             fi
-            echo "Waiting 10s..."
-            sleep 10
+
+            echo "Attempt $i/$MAX_ATTEMPTS - LB IP not yet assigned. Sleeping ${SLEEP_SECS}s..."
+            sleep $SLEEP_SECS
           done
 
           if [ -z "$EXTERNAL_IP" ]; then
-            echo "Ingress endpoint not ready yet. Check with: kubectl get ingress $INGRESS_NAME -n $NAMESPACE -o wide"
+            echo "ERROR: ingress controller LoadBalancer IP/hostname was not assigned within timeout."
+            echo "Check: kubectl -n $LB_SVC_NS get svc $LB_SVC_NAME -o wide"
+            exit 1
           fi
 
+          # Export for later steps (GitHub Actions environment)
           echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
           export EXTERNAL_IP
 
-          # Render & apply application manifests (Services + Deployments)
+          # Render & apply application manifests (Services + Deployments + ingress)
+          cp k8s/ingress.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/ingress.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/ingress.yaml
           cp k8s/nginx.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/nginx.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/nginx.yaml
           cp k8s/nodejs-app.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/nodejs-app.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/nodejs-app.yaml
           cp k8s/k8sgpt-"${PROVIDER}".yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/k8sgpt-"${PROVIDER}".yaml && rm k8s/temp.yaml && kubectl apply -f k8s/k8sgpt-"${PROVIDER}".yaml
@@ -466,6 +476,7 @@ jobs:
           # Apply ServiceMonitor now that Service & Endpoints exist
           kubectl apply -f k8s/k8sgpt-servicemonitor.yaml
 
+          echo "ingress LB:           $EXTERNAL_IP"
           echo "Grafana URL:          http://grafana.${EXTERNAL_IP}.nip.io/"
           echo "Prometheus URL:       http://prometheus.${EXTERNAL_IP}.nip.io/"
           echo "NodeJS App URL:       http://nodejs.${EXTERNAL_IP}.nip.io/"
