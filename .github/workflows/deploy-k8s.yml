@@ -465,14 +465,14 @@ jobs:
           
           echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
           export EXTERNAL_IP
-          
+
           cp k8s/monitoring-ingress.yaml k8s/monitoring-temp.yaml 
           envsubst < k8s/monitoring-temp.yaml > k8s/monitoring-ingress.yaml 
           rm k8s/monitoring-temp.yaml 
           kubectl apply -f k8s/monitoring-ingress.yaml
 
-          echo "Grafana URL:     http://grafana.${EXTERNAL_IP}.nip.io/grafana/"
-          echo "Prometheus URL:  http://prometheus.${EXTERNAL_IP}.nip.io/prometheus"
+          echo "Grafana URL:     http://grafana.${EXTERNAL_IP}.nip.io/"
+          echo "Prometheus URL:  http://prometheus.${EXTERNAL_IP}.nip.io/"
 
       - name: Verify Kubernetes Deployments & Services
         run: |

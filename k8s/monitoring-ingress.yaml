@@ -12,7 +12,7 @@ spec:
     - host: grafana.${EXTERNAL_IP}.nip.io
       http:
         paths:
-          - path: /grafana
+          - path: /
             pathType: Prefix
             backend:
               service:
@@ -22,7 +22,7 @@ spec:
     - host: prometheus.${EXTERNAL_IP}.nip.io
       http:
         paths:
-          - path: /prometheus
+          - path: /
             pathType: Prefix
             backend:
               service:

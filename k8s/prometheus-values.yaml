@@ -23,28 +23,26 @@ prometheus:
     retention: 7d
     evaluationInterval: "15s"
 
-    # Run Prometheus behind a path-based ingress (/prometheus)
-    # These flags ensure Prometheus serves and generates links under /prometheus
-    additionalArgs:
-      - name: --web.route-prefix
-        value: /prometheus
-      - name: --web.external-url
-        value: /prometheus
+    # NOTE: removed `additionalArgs` that attempted to set web.route-prefix / web.external-url.
+    # Using host-based ingress (grafana.<LB>.nip.io, prometheus.<LB>.nip.io) is simpler and avoids
+    # the Prometheus argument/CRD rendering issues (previously caused unknown long flag errors).
 
-    # If you want Prometheus web to listen only on certain ports / behave differently,
-    # you can set additional containers/ports here (not usually required).
+    # If you really need path-based routing, re-add `additionalArgs` here but ensure the chart
+    # renders them exactly how the Prometheus CRD expects (this is error-prone).
+    #
+    # additionalArgs:
+    #   - --web.route-prefix=/prometheus
+    #   - --web.external-url=/prometheus
 
 grafana:
   enabled: true
   adminUser: admin
   adminPassword: prom-operator
 
-  # Serve Grafana from /grafana when using path-based Ingress
-  env:
-    GF_SERVER_ROOT_URL: /grafana
-    GF_SERVER_SERVE_FROM_SUB_PATH: "true"
-    # Optional: set GF_SERVER_EXTERNAL_URL if you have a full URL (ex: "https://example.com/grafana")
-    # GF_SERVER_EXTERNAL_URL: "https://your.domain/grafana"
+  # Serve Grafana at root when using host-based ingress.
+  # Removed GF_SERVER_ROOT_URL and GF_SERVER_SERVE_FROM_SUB_PATH to avoid redirect loops.
+  # If you must serve Grafana under a subpath, restore these env vars and configure ingress rewrites.
+  env: {}
 
   ingress:
     enabled: false
