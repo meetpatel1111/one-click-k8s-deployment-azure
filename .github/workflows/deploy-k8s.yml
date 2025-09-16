@@ -463,8 +463,10 @@ jobs:
             echo "Ingress endpoint not ready yet. Check with: kubectl get ingress $INGRESS_NAME -n $NAMESPACE -o wide"
           fi
 
-          sed "s#<LB_IP>#${EXTERNAL_IP}#g" k8s/monitoring-ingress.yaml > k8s/monitoring-ingress.yaml.tmp
-          kubectl apply -f k8s/monitoring-ingress.yaml.tmp && rm k8s/monitoring-ingress.yaml.tmp
+          cp k8s/monitoring-ingress.yaml k8s/monitoring-temp.yaml 
+          envsubst < k8s/monitoring-temp.yaml > k8s/monitoring-ingress.yaml 
+          rm k8s/monitoring-temp.yaml 
+          kubectl apply -f k8s/monitoring-ingress.yaml
 
           # apply
           kubectl apply -f k8s/monitoring-ingress.yaml
