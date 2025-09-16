@@ -6,11 +6,11 @@ on:
       cluster_name:
         description: 'AKS Cluster name'
         required: true
-        default: 'aks-cluster-dev'
+        default: 'aks-np-use-dev'
       resource_group:
         description: 'Azure Resource Group that contains the AKS cluster'
         required: true
-        default: 'aks-cluster-dev-rg'
+        default: 'rg-np-use-dev'
       namespace:
         description: 'Kubernetes namespace'
         required: true
