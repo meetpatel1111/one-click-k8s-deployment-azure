@@ -370,7 +370,7 @@ jobs:
         run: |
           # use repo file in k8s/prometheus-values.yaml (committed to repo)
           helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
-            -n monitoring \
+            -n default \
             --wait \
             --timeout 10m \
             -f k8s/prometheus-values.yaml
@@ -381,25 +381,25 @@ jobs:
 
           # wait for Prometheus CR
           for i in {1..30}; do
-            kubectl -n monitoring get prometheus >/dev/null 2>&1 && break
+            kubectl -n default get prometheus >/dev/null 2>&1 && break
             sleep 2
           done
 
           # prefer waiting on the Prometheus StatefulSet if present
-          SS=$(kubectl -n monitoring get statefulset -o name | grep -m1 prometheus || true)
+          SS=$(kubectl -n default get statefulset -o name | grep -m1 prometheus || true)
           if [ -n "$SS" ]; then
-            kubectl -n monitoring rollout status "$SS" --timeout=300s
+            kubectl -n default rollout status "$SS" --timeout=300s
           else
             # fallback: wait for any prometheus pod to be Running
             for i in {1..60}; do
-              P=$(kubectl -n monitoring get pods -l app=prometheus -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
-              [ -n "$P" ] && kubectl -n monitoring wait --for=condition=Ready pod/"$P" --timeout=300s && break
+              P=$(kubectl -n default get pods -l app=prometheus -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+              [ -n "$P" ] && kubectl -n default wait --for=condition=Ready pod/"$P" --timeout=300s && break
               sleep 2
             done
           fi
 
           # ensure grafana deployment (chart creates prometheus-grafana)
-          kubectl -n monitoring rollout status deploy/prometheus-grafana --timeout=180s
+          kubectl -n default rollout status deploy/prometheus-grafana --timeout=180s
 
       - name: Apply Kubernetes Deployments & Services (Azure)
         run: |

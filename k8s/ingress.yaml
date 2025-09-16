@@ -47,8 +47,8 @@ spec:
                 port:
                   number: 80
 
-          # Grafana (monitoring)
-          - path: /grafana(/|$)(.*)
+          # Grafana (monitoring) — use single capture group so rewrite-target /$1 works
+          - path: /grafana/?(.*)
             pathType: ImplementationSpecific
             backend:
               service:
@@ -56,8 +56,8 @@ spec:
                 port:
                   number: 80
 
-          # Prometheus UI (monitoring)
-          - path: /prometheus(/|$)(.*)
+          # Prometheus UI (monitoring) — use single capture group so rewrite-target /$1 works
+          - path: /prometheus/?(.*)
             pathType: ImplementationSpecific
             backend:
               service:
