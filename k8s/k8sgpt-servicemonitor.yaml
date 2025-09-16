@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: k8sgpt-servicemonitor
+  namespace: default
+  labels:
+    release: prometheus   # must match prometheus operator's serviceMonitorSelector label
+spec:
+  selector:
+    matchLabels:
+      app: k8sgpt
+  namespaceSelector:
+    matchNames:
+      - default
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      honorLabels: false

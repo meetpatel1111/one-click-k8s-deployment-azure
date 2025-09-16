@@ -46,3 +46,21 @@ spec:
                 name: k8sgpt-service
                 port:
                   number: 80
+
+          # Grafana (monitoring)
+          - path: /grafana(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: prometheus-grafana
+                port:
+                  number: 80
+
+          # Prometheus UI (monitoring)
+          - path: /prometheus(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: prometheus-kube-prometheus-prometheus
+                port:
+                  number: 9090

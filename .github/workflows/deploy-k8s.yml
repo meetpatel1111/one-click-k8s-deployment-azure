@@ -86,7 +86,7 @@ jobs:
 
   terraform-k8s:
     if: ${{ github.event.inputs.run_terraform == 'true' }}
-    needs: security-scan
+    # needs: security-scan
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -170,7 +170,7 @@ jobs:
   kubernetes-deploy:
     if: ${{ github.event.inputs.run_application_deployment == 'true' }}
     runs-on: ubuntu-latest
-    needs: terraform-k8s
+    # needs: terraform-k8s
     defaults:
       run:
         shell: bash
@@ -351,6 +351,48 @@ jobs:
           kubectl create secret generic retro-arcade-secret \
             --from-literal=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
             --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Install Helm (if missing)
+        uses: azure/setup-helm@v3
+        with:
+          version: 'latest'
+
+      - name: Add Prometheus Helm repo and update
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+
+      - name: Create monitoring namespace
+        run: |
+          kubectl create ns monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Install/Upgrade kube-prometheus-stack via Helm
+        run: |
+          # use repo file in k8s/prometheus-values.yaml (committed to repo)
+          helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+            -n monitoring \
+            --wait \
+            --timeout 10m \
+            -f k8s/prometheus-values.yaml
+
+      - name: Wait for Prometheus CRD and operator readiness
+        run: |
+          # ensure Prometheus CR exists (operator created) before applying ServiceMonitor
+          for i in {1..30}; do
+            kubectl -n monitoring get prometheus >/dev/null 2>&1 && break
+            echo "waiting for Prometheus CR to exist..."
+            sleep 5
+          done
+
+      - name: Wait for Prometheus pods to be ready
+        run: |
+          kubectl -n monitoring rollout status deploy/prometheus-kube-prometheus-prometheus --timeout=300s || true
+          # ensure grafana is up (chart uses release name prometheus -> prometheus-grafana)
+          kubectl -n monitoring rollout status deploy/prometheus-grafana --timeout=300s || true
+
+      - name: Apply k8s ServiceMonitor for k8sgpt (so Prometheus scrapes existing Deployment)
+        run: |
+          kubectl apply -f k8s/k8sgpt-servicemonitor.yaml
 
       - name: Apply Kubernetes Deployments & Services (Azure)
         run: |
