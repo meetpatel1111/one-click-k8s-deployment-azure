@@ -411,35 +411,6 @@ jobs:
 
           PROVIDER="${{ github.event.inputs.provider }}"
           ENVIRONMENT="${{ github.event.inputs.environment }}"
-
-          # Render & apply application manifests (Services + Deployments)
-          cp k8s/nginx.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/nginx.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/nginx.yaml
-          cp k8s/nodejs-app.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/nodejs-app.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/nodejs-app.yaml
-          cp k8s/k8sgpt-"${PROVIDER}".yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/k8sgpt-"${PROVIDER}".yaml && rm k8s/temp.yaml && kubectl apply -f k8s/k8sgpt-"${PROVIDER}".yaml
-          cp k8s/k8sgpt-setup.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/k8sgpt-setup.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/k8sgpt-setup.yaml
-          cp k8s/retro-arcade-galaxy.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/retro-arcade-galaxy.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/retro-arcade-galaxy.yaml
-          cp k8s/arcade-ingress.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/arcade-ingress.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/arcade-ingress.yaml
-
-          # Ensure core deployments roll out
-          kubectl -n default rollout status deployment/k8sgpt --timeout=180s || echo "k8sgpt rollout status timed out or deployment not found (continuing)"
-          kubectl -n default rollout status deployment/nginx --timeout=120s || echo "nginx rollout status timed out or deployment not found (continuing)"
-          kubectl -n default rollout status deployment/nodejs-app --timeout=120s || echo "nodejs-app rollout status timed out or deployment not found (continuing)"
-          kubectl -n default rollout status deployment/retro-arcade-galaxy --timeout=120s || echo "retro rollout status timed out or not found (continuing)"
-
-          # Wait for k8sgpt endpoints to appear before creating the ServiceMonitor
-          for i in {1..30}; do
-            EP=$(kubectl -n default get endpoints k8sgpt-service -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null || true)
-            if [ -n "$EP" ]; then
-              echo "k8sgpt endpoints ready: $EP"
-              break
-            fi
-            echo "waiting for k8sgpt endpoints..."
-            sleep 5
-          done
-
-          # Apply ServiceMonitor now that Service & Endpoints exist
-          kubectl apply -f k8s/k8sgpt-servicemonitor.yaml
-
           # Apply Ingress (main), and k8sgpt-ingress (if present)
           cp k8s/ingress.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/ingress.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/ingress.yaml
 
@@ -462,17 +433,51 @@ jobs:
           if [ -z "$EXTERNAL_IP" ]; then
             echo "Ingress endpoint not ready yet. Check with: kubectl get ingress $INGRESS_NAME -n $NAMESPACE -o wide"
           fi
-          
+
           echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
           export EXTERNAL_IP
 
-          cp k8s/monitoring-ingress.yaml k8s/monitoring-temp.yaml 
-          envsubst < k8s/monitoring-temp.yaml > k8s/monitoring-ingress.yaml 
-          rm k8s/monitoring-temp.yaml 
-          kubectl apply -f k8s/monitoring-ingress.yaml
+          # Render & apply application manifests (Services + Deployments)
+          cp k8s/nginx.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/nginx.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/nginx.yaml
+          cp k8s/nodejs-app.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/nodejs-app.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/nodejs-app.yaml
+          cp k8s/k8sgpt-"${PROVIDER}".yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/k8sgpt-"${PROVIDER}".yaml && rm k8s/temp.yaml && kubectl apply -f k8s/k8sgpt-"${PROVIDER}".yaml
+          cp k8s/k8sgpt-setup.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/k8sgpt-setup.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/k8sgpt-setup.yaml
+          cp k8s/retro-arcade-galaxy.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/retro-arcade-galaxy.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/retro-arcade-galaxy.yaml
+          cp k8s/arcade-ingress.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/arcade-ingress.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/arcade-ingress.yaml
+          cp k8s/monitoring-ingress.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/monitoring-ingress.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/monitoring-ingress.yaml
 
-          echo "Grafana URL:     http://grafana.${EXTERNAL_IP}.nip.io/"
-          echo "Prometheus URL:  http://prometheus.${EXTERNAL_IP}.nip.io/"
+          # Ensure core deployments roll out
+          kubectl -n default rollout status deployment/k8sgpt --timeout=180s || echo "k8sgpt rollout status timed out or deployment not found (continuing)"
+          kubectl -n default rollout status deployment/nginx --timeout=120s || echo "nginx rollout status timed out or deployment not found (continuing)"
+          kubectl -n default rollout status deployment/nodejs-app --timeout=120s || echo "nodejs-app rollout status timed out or deployment not found (continuing)"
+          kubectl -n default rollout status deployment/retro-arcade-galaxy --timeout=120s || echo "retro rollout status timed out or not found (continuing)"
+
+          # Wait for k8sgpt endpoints to appear before creating the ServiceMonitor
+          for i in {1..30}; do
+            EP=$(kubectl -n default get endpoints k8sgpt-service -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null || true)
+            if [ -n "$EP" ]; then
+              echo "k8sgpt endpoints ready: $EP"
+              break
+            fi
+            echo "waiting for k8sgpt endpoints..."
+            sleep 5
+          done
+
+          # Apply ServiceMonitor now that Service & Endpoints exist
+          kubectl apply -f k8s/k8sgpt-servicemonitor.yaml
+
+          echo "Grafana URL:          http://grafana.${EXTERNAL_IP}.nip.io/"
+          echo "Prometheus URL:       http://prometheus.${EXTERNAL_IP}.nip.io/"
+          echo "NodeJS App URL:       http://nodejs.${EXTERNAL_IP}.nip.io/"
+          echo "NGINX Demo URL:       http://nginx.${EXTERNAL_IP}.nip.io/"
+          echo "K8sGPT API URL:       http://k8sgpt.${EXTERNAL_IP}.nip.io/"
+          echo "K8sGPT Metrics URL:   http://k8sgpt.${EXTERNAL_IP}.nip.io/metrics"
+          echo "Retro Arcade URL:     http://retro-arcade.${EXTERNAL_IP}.nip.io/"
+
+      - name: Enable k8sgpt filters
+        run: |
+          chmod +x ./k8s/enable-k8sgpt-filters.sh
+          ./k8s/enable-k8sgpt-filters.sh
 
       - name: Verify Kubernetes Deployments & Services
         run: |

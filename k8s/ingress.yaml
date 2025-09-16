@@ -1,46 +1,41 @@
+# k8s/main-ingress.yaml.template
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: main-ingress
   namespace: default
   annotations:
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    kubernetes.io/ingress.class: "nginx"
 spec:
   ingressClassName: nginx
   rules:
-    - http:
+    - host: nodejs.${EXTERNAL_IP}.nip.io
+      http:
         paths:
-          # NodeJS: /nodejs -> / ; /nodejs/foo -> /foo
-          - path: /nodejs/?(.*)
-            pathType: ImplementationSpecific
+          - path: /
+            pathType: Prefix
             backend:
               service:
                 name: nodejs-service
                 port:
                   number: 3000
 
-          # NGINX demo: /nginx -> / ; /nginx/foo -> /foo
-          - path: /nginx/?(.*)
-            pathType: ImplementationSpecific
+    - host: nginx.${EXTERNAL_IP}.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
             backend:
               service:
                 name: nginx-service
                 port:
                   number: 80
 
-          # k8sgpt metrics: /k8sgpt/metrics -> /metrics ; /k8sgpt/metrics/x -> /metrics/x
-          - path: /k8sgpt/(metrics.*)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: k8sgpt-service
-                port:
-                  number: 8081
-
-          # k8sgpt API: /k8sgpt -> / ; /k8sgpt/foo -> /foo
-          - path: /k8sgpt/?(.*)
-            pathType: ImplementationSpecific
+    - host: k8sgpt.${EXTERNAL_IP}.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
             backend:
               service:
                 name: k8sgpt-service
