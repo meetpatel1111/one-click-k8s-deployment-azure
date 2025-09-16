@@ -390,10 +390,6 @@ jobs:
           # ensure grafana is up (chart uses release name prometheus -> prometheus-grafana)
           kubectl -n monitoring rollout status deploy/prometheus-grafana --timeout=300s || true
 
-      - name: Apply k8s ServiceMonitor for k8sgpt (so Prometheus scrapes existing Deployment)
-        run: |
-          kubectl apply -f k8s/k8sgpt-servicemonitor.yaml
-
       - name: Apply Kubernetes Deployments & Services (Azure)
         run: |
           kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.13.0/deploy/static/provider/cloud/deploy.yaml
@@ -405,13 +401,36 @@ jobs:
           PROVIDER="${{ github.event.inputs.provider }}"
           ENVIRONMENT="${{ github.event.inputs.environment }}"
 
+          # Render & apply application manifests (Services + Deployments)
           cp k8s/nginx.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/nginx.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/nginx.yaml
           cp k8s/nodejs-app.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/nodejs-app.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/nodejs-app.yaml
           cp k8s/k8sgpt-"${PROVIDER}".yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/k8sgpt-"${PROVIDER}".yaml && rm k8s/temp.yaml && kubectl apply -f k8s/k8sgpt-"${PROVIDER}".yaml
           cp k8s/k8sgpt-setup.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/k8sgpt-setup.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/k8sgpt-setup.yaml
-          cp k8s/ingress.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/ingress.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/ingress.yaml
           cp k8s/retro-arcade-galaxy.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/retro-arcade-galaxy.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/retro-arcade-galaxy.yaml
           cp k8s/arcade-ingress.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/arcade-ingress.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/arcade-ingress.yaml
+
+          # Ensure core deployments roll out
+          kubectl -n default rollout status deployment/k8sgpt --timeout=180s || echo "k8sgpt rollout status timed out or deployment not found (continuing)"
+          kubectl -n default rollout status deployment/nginx --timeout=120s || echo "nginx rollout status timed out or deployment not found (continuing)"
+          kubectl -n default rollout status deployment/nodejs-app --timeout=120s || echo "nodejs-app rollout status timed out or deployment not found (continuing)"
+          kubectl -n default rollout status deployment/retro-arcade-galaxy --timeout=120s || echo "retro rollout status timed out or not found (continuing)"
+
+          # Wait for k8sgpt endpoints to appear before creating the ServiceMonitor
+          for i in {1..30}; do
+            EP=$(kubectl -n default get endpoints k8sgpt-service -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null || true)
+            if [ -n "$EP" ]; then
+              echo "k8sgpt endpoints ready: $EP"
+              break
+            fi
+            echo "waiting for k8sgpt endpoints..."
+            sleep 5
+          done
+
+          # Apply ServiceMonitor now that Service & Endpoints exist
+          kubectl apply -f k8s/k8sgpt-servicemonitor.yaml
+
+          # Apply Ingress (main), and k8sgpt-ingress (if present)
+          cp k8s/ingress.yaml k8s/temp.yaml && envsubst < k8s/temp.yaml > k8s/ingress.yaml && rm k8s/temp.yaml && kubectl apply -f k8s/ingress.yaml
 
           echo "Waiting for Ingress endpoint..."
           INGRESS_NAME="main-ingress"
