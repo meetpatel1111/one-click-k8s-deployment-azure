@@ -25,8 +25,9 @@ max_size         = 3
 ################################
 # Optional user pool (disabled for now)
 ################################
-enable_user_pool      = false
-user_node_vm_size     = "Standard_B4ms"
+enable_user_pool = false
+#user_node_vm_size     = "Standard_B4ms"
+user_node_vm_size     = "Standard_B2s"
 user_desired_capacity = 0
 user_min_size         = 0
 user_max_size         = 1
