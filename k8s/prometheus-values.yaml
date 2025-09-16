@@ -4,8 +4,19 @@
 
 prometheus:
   prometheusSpec:
-    # Important: allow ServiceMonitors to be used (don't auto-scrape all ServiceMonitors)
+    # Important: do not auto-scrape all ServiceMonitors; use an explicit selector
     serviceMonitorSelectorNilUsesHelmValues: false
+
+    # Select ServiceMonitors with label release=prometheus (adjust if you used a different release name)
+    serviceMonitorSelector:
+      matchLabels:
+        release: prometheus
+
+    # Allow Prometheus operator to discover ServiceMonitors across namespaces
+    # (set to specific namespaces with matchNames if you prefer stricter scope)
+    serviceMonitorNamespaceSelector:
+      any: true
+
     # Optional: reduce retention for dev/testing (set to production value when needed)
     retention: 7d
     evaluationInterval: "15s"
