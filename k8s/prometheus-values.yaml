@@ -26,8 +26,10 @@ prometheus:
     # Run Prometheus behind a path-based ingress (/prometheus)
     # These flags ensure Prometheus serves and generates links under /prometheus
     additionalArgs:
-      - --web.route-prefix=/prometheus
-      - --web.external-url=/prometheus
+      - name: --web.route-prefix
+        value: /prometheus
+      - name: --web.external-url
+        value: /prometheus
 
     # If you want Prometheus web to listen only on certain ports / behave differently,
     # you can set additional containers/ports here (not usually required).
