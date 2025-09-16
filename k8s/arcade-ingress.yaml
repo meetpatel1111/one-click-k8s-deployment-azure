@@ -5,16 +5,14 @@ metadata:
   namespace: default
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$1
 spec:
   ingressClassName: nginx
   rules:
     - host: retro-arcade.${EXTERNAL_IP}.nip.io
       http:
         paths:
-          - path: /retro/?(.*)
-            pathType: ImplementationSpecific
+          - path: /
+            pathType: Prefix
             backend:
               service:
                 name: retro-arcade-service
