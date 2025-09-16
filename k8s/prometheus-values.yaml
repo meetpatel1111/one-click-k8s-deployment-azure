@@ -12,10 +12,12 @@ prometheus:
       matchLabels:
         release: prometheus
 
-    # Allow Prometheus operator to discover ServiceMonitors across namespaces
-    # (set to specific namespaces with matchNames if you prefer stricter scope)
+    # Allow Prometheus operator to discover ServiceMonitors in these namespaces
+    # (use matchNames for widest CRD compatibility)
     serviceMonitorNamespaceSelector:
-      any: true
+      matchNames:
+        - default
+        - monitoring
 
     # Optional: reduce retention for dev/testing (set to production value when needed)
     retention: 7d
