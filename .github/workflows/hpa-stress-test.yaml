@@ -150,9 +150,30 @@ jobs:
         set -euo pipefail
         echo "Resolving ${TARGET_HOST} ..."
         nslookup "${TARGET_HOST}" || host "${TARGET_HOST}" || dig +short "${TARGET_HOST}" || true
-        echo "curl -I ${TARGET_URL} (may time out if service is not ready):"
-        kubectl run -n "${{ github.event.inputs.namespace }}" --restart=Never --rm --image=appropriate/curl curlcheck -- \
-          sh -c "curl -sS -I --max-time 10 '${TARGET_URL}' || true"
+
+        echo "Launching one-shot pod to curl ${TARGET_URL} (will capture logs then delete pod)..."
+        POD_NAME="curlcheck-$$"
+        kubectl run "${POD_NAME}" \
+          --image=appropriate/curl \
+          -n "${{ github.event.inputs.namespace }}" \
+          --restart=Never \
+          --command -- sh -c "curl -sS -I --max-time 10 '${TARGET_URL}' || true"
+
+        # wait for pod to finish (timeout 20s)
+        for i in {1..20}; do
+          PHASE=$(kubectl -n "${{ github.event.inputs.namespace }}" get pod "${POD_NAME}" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+          if [ "$PHASE" = "Succeeded" ] || [ "$PHASE" = "Failed" ]; then
+            break
+          fi
+          sleep 1
+        done
+
+        echo "----- curl pod logs -----"
+        kubectl -n "${{ github.event.inputs.namespace }}" logs "${POD_NAME}" || true
+        echo "----- end logs -----"
+
+        # cleanup
+        kubectl -n "${{ github.event.inputs.namespace }}" delete pod "${POD_NAME}" --ignore-not-found
 
     - name: Start Fortio Load (Scale-Up Trigger)
       shell: bash
