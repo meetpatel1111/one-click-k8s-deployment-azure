@@ -462,7 +462,9 @@ jobs:
           if [ -z "$EXTERNAL_IP" ]; then
             echo "Ingress endpoint not ready yet. Check with: kubectl get ingress $INGRESS_NAME -n $NAMESPACE -o wide"
           fi
-
+          
+          echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
+          
           cp k8s/monitoring-ingress.yaml k8s/monitoring-temp.yaml 
           envsubst < k8s/monitoring-temp.yaml > k8s/monitoring-ingress.yaml 
           rm k8s/monitoring-temp.yaml 
