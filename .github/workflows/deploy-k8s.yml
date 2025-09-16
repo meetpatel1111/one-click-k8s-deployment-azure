@@ -375,20 +375,31 @@ jobs:
             --timeout 10m \
             -f k8s/prometheus-values.yaml
 
-      - name: Wait for Prometheus CRD and operator readiness
+      - name: Wait for Prometheus & Grafana to be ready
         run: |
-          # ensure Prometheus CR exists (operator created) before applying ServiceMonitor
+          set -euo pipefail
+
+          # wait for Prometheus CR
           for i in {1..30}; do
             kubectl -n monitoring get prometheus >/dev/null 2>&1 && break
-            echo "waiting for Prometheus CR to exist..."
-            sleep 5
+            sleep 2
           done
 
-      - name: Wait for Prometheus pods to be ready
-        run: |
-          kubectl -n monitoring rollout status deploy/prometheus-kube-prometheus-prometheus --timeout=300s || true
-          # ensure grafana is up (chart uses release name prometheus -> prometheus-grafana)
-          kubectl -n monitoring rollout status deploy/prometheus-grafana --timeout=300s || true
+          # prefer waiting on the Prometheus StatefulSet if present
+          SS=$(kubectl -n monitoring get statefulset -o name | grep -m1 prometheus || true)
+          if [ -n "$SS" ]; then
+            kubectl -n monitoring rollout status "$SS" --timeout=300s
+          else
+            # fallback: wait for any prometheus pod to be Running
+            for i in {1..60}; do
+              P=$(kubectl -n monitoring get pods -l app=prometheus -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+              [ -n "$P" ] && kubectl -n monitoring wait --for=condition=Ready pod/"$P" --timeout=300s && break
+              sleep 2
+            done
+          fi
+
+          # ensure grafana deployment (chart creates prometheus-grafana)
+          kubectl -n monitoring rollout status deploy/prometheus-grafana --timeout=180s
 
       - name: Apply Kubernetes Deployments & Services (Azure)
         run: |
