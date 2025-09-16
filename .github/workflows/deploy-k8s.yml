@@ -463,6 +463,14 @@ jobs:
             echo "Ingress endpoint not ready yet. Check with: kubectl get ingress $INGRESS_NAME -n $NAMESPACE -o wide"
           fi
 
+          sed "s#<LB_IP>#${EXTERNAL_IP}#g" k8s/monitoring-ingress.yaml > k8s/monitoring-ingress.yaml.tmp
+          kubectl apply -f k8s/monitoring-ingress.yaml.tmp && rm k8s/monitoring-ingress.yaml.tmp
+
+          # apply
+          kubectl apply -f k8s/monitoring-ingress.yaml
+          echo "Grafana URL:     http://grafana.${LB_IP}.nip.io/grafana/"
+          echo "Prometheus URL:  http://prometheus.${LB_IP}.nip.io/prometheus"
+
       - name: Verify Kubernetes Deployments & Services
         run: |
           kubectl get nodes -o wide

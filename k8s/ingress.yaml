@@ -46,21 +46,3 @@ spec:
                 name: k8sgpt-service
                 port:
                   number: 80
-
-          # Grafana (monitoring) — use single capture group so rewrite-target /$1 works
-          - path: /grafana/?(.*)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: prometheus-grafana
-                port:
-                  number: 80
-
-          # Prometheus UI (monitoring) — use single capture group so rewrite-target /$1 works
-          - path: /prometheus/?(.*)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: prometheus-kube-prometheus-prometheus
-                port:
-                  number: 9090
