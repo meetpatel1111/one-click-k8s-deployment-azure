@@ -362,9 +362,9 @@ jobs:
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
 
-      - name: Create monitoring namespace
-        run: |
-          kubectl create ns monitoring --dry-run=client -o yaml | kubectl apply -f -
+      # - name: Create monitoring namespace
+      #   run: |
+      #     kubectl create ns monitoring --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Install/Upgrade kube-prometheus-stack via Helm
         run: |
