@@ -1,6 +1,6 @@
 ## prometheus-values.yaml - for kube-prometheus-stack Helm chart (dev-friendly)
 # Use this file with:
-# helm upgrade --install prometheus prometheus-community/kube-prometheus-stack -n monitoring -f k8s/prometheus-values.yaml
+# helm upgrade --install prometheus prometheus-community/kube-prometheus-stack -n default -f k8s/prometheus-values.yaml
 
 prometheus:
   prometheusSpec:
@@ -17,7 +17,7 @@ prometheus:
     serviceMonitorNamespaceSelector:
       matchNames:
         - default
-        - monitoring
+        # - monitoring
 
     # Optional: reduce retention for dev/testing (set to production value when needed)
     retention: 7d
