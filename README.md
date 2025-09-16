@@ -3,7 +3,7 @@
 
 ## ⚡ TL;DR
 A one-click, reusable Kubernetes deployment system powered by **Terraform + Kubernetes + GitHub Actions**, 
-deploying **Node.js, NGINX, and k8sGPT apps** with built-in **security scans, safe deletions, and modular workflows**.
+deploying **Node.js, NGINX, and k8sGPT apps** with built-in **security scans, safe deletions, and modular workflows specifically centered around Azure.**.
 
 ---
 
