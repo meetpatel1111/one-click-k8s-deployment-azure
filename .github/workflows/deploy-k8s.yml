@@ -86,7 +86,7 @@ jobs:
 
   terraform-k8s:
     if: ${{ github.event.inputs.run_terraform == 'true' }}
-    # needs: security-scan
+    needs: security-scan
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -170,7 +170,7 @@ jobs:
   kubernetes-deploy:
     if: ${{ github.event.inputs.run_application_deployment == 'true' }}
     runs-on: ubuntu-latest
-    # needs: terraform-k8s
+    needs: terraform-k8s
     defaults:
       run:
         shell: bash
