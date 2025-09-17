@@ -436,20 +436,31 @@ jobs:
             --from-literal=GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Wait for k8sgpt CRD to be registered
+      - name: Wait for k8sgpt CRDs to be registered
         run: |
-          # wait for the custom resource definition core.k8sgpt.ai to appear
-          for i in {1..20}; do
-            if kubectl get crd core.k8sgpt.ai >/dev/null 2>&1; then
-              echo "k8sgpt CRD is present"
+          # wait for the k8sgpt CRDs to be registered (look for either k8sgpts or results)
+          MAX_ATTEMPTS=40
+          SLEEP_SECS=5
+          FOUND=0
+
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            if kubectl get crd k8sgpts.core.k8sgpt.ai >/dev/null 2>&1 || kubectl get crd results.core.k8sgpt.ai >/dev/null 2>&1; then
+              echo "k8sgpt CRD(s) present"
+              FOUND=1
               break
             fi
-            echo "waiting for k8sgpt CRD..."
-            sleep 3
+            echo "waiting for k8sgpt CRDs... (attempt $i/$MAX_ATTEMPTS)"
+            sleep $SLEEP_SECS
           done
-          if ! kubectl get crd core.k8sgpt.ai >/dev/null 2>&1; then
-            echo "ERROR: k8sgpt CRD not found"
-            kubectl get crd || true
+
+          if [ $FOUND -ne 1 ]; then
+            echo "ERROR: k8sgpt CRDs not found after $((MAX_ATTEMPTS * SLEEP_SECS))s"
+            echo ""
+            echo "Showing CRDs containing 'k8sgpt' (if any):"
+            kubectl get crd | grep -i k8sgpt || true
+            echo ""
+            echo "Full CRD list (first 80 lines):"
+            kubectl get crd | sed -n '1,80p' || true
             exit 1
           fi
 
