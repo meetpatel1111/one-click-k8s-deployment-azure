@@ -12,18 +12,20 @@ spec:
     matchLabels:
       app: k8sgpt
   namespaceSelector:
-    matchNames: ["default"]
+    matchNames:
+      - default
+  jobLabel: k8sgpt_job
   endpoints:
     - port: metrics
       path: /metrics
       interval: 15s
       scrapeTimeout: 10s
-  jobLabel: k8sgpt_job
-  metricRelabelings:
-    - sourceLabels: [__meta_kubernetes_service_name]
-      targetLabel: service
-    - sourceLabels: [__meta_kubernetes_namespace]
-      targetLabel: namespace
+      honorLabels: false
+      metricRelabelings:
+        - sourceLabels: ["__meta_kubernetes_service_name"]
+          targetLabel: "service"
+        - sourceLabels: ["__meta_kubernetes_namespace"]
+          targetLabel: "namespace"
 
 ---
 apiVersion: monitoring.coreos.com/v1
@@ -36,17 +38,19 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: k8sgpt-sample
+      "app.kubernetes.io/name": "k8sgpt-sample"
   namespaceSelector:
-    matchNames: ["k8sgpt-operator-system"]
+    matchNames:
+      - k8sgpt-operator-system
+  jobLabel: k8sgpt_operator_job
   endpoints:
     - port: http-metrics
       path: /metrics
       interval: 15s
       scrapeTimeout: 10s
-  jobLabel: k8sgpt_operator_job
-  metricRelabelings:
-    - sourceLabels: [__meta_kubernetes_service_name]
-      targetLabel: service
-    - sourceLabels: [__meta_kubernetes_namespace]
-      targetLabel: namespace
+      honorLabels: false
+      metricRelabelings:
+        - sourceLabels: ["__meta_kubernetes_service_name"]
+          targetLabel: "service"
+        - sourceLabels: ["__meta_kubernetes_namespace"]
+          targetLabel: "namespace"
