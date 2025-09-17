@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: k8sgpt-rules
+  namespace: default
+spec:
+  groups:
+  - name: k8sgpt.rules
+    rules:
+    - alert: K8sGPTResultErrorsHigh
+      expr: increase(k8sgpt_results_with_errors_total[5m]) > 0
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "k8sgpt reported new result errors in the last 5m"
+        description: "Check the k8sgpt Result CRs (kubectl get results -A) and operator logs."

@@ -401,6 +401,95 @@ jobs:
           # ensure grafana deployment (chart creates prometheus-grafana)
           kubectl -n default rollout status deploy/prometheus-grafana --timeout=180s
 
+      - name: Add k8sgpt Helm repo and update
+        run: |
+          helm repo add k8sgpt https://charts.k8sgpt.ai
+          helm repo update
+
+      - name: Install/Upgrade k8sgpt-operator via Helm
+        run: |
+          NAMESPACE=k8sgpt-operator-system
+          RELEASE_NAME=release
+          helm upgrade --install ${RELEASE_NAME} k8sgpt/k8sgpt-operator \
+            -n ${NAMESPACE} --create-namespace \
+            --wait --timeout 5m \
+            --set interplex.enabled=true \
+            --set grafanaDashboard.enabled=true \
+            --set serviceMonitor.enabled=true
+
+      - name: Export provider to env
+        run: |
+          echo "PROVIDER=${{ github.event.inputs.provider }}" >> $GITHUB_ENV
+
+      - name: Create k8sgpt secret from GitHub Secrets (OpenAI)
+        if: ${{ github.event.inputs.provider == 'openai' }}
+        run: |
+          # store the GitHub secret OPENAI_API_KEY into k8sgpt-openai-secret with the same key name
+          kubectl -n k8sgpt-operator-system create secret generic k8sgpt-openai-secret \
+            --from-literal=OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create k8sgpt secret from GitHub Secrets (Google/Gemini)
+        if: ${{ github.event.inputs.provider == 'google' }}
+        run: |
+          kubectl -n k8sgpt-operator-system create secret generic k8sgpt-openai-secret \
+            --from-literal=GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Wait for k8sgpt CRD to be registered
+        run: |
+          # wait for the custom resource definition core.k8sgpt.ai to appear
+          for i in {1..20}; do
+            if kubectl get crd core.k8sgpt.ai >/dev/null 2>&1; then
+              echo "k8sgpt CRD is present"
+              break
+            fi
+            echo "waiting for k8sgpt CRD..."
+            sleep 3
+          done
+          if ! kubectl get crd core.k8sgpt.ai >/dev/null 2>&1; then
+            echo "ERROR: k8sgpt CRD not found"
+            kubectl get crd || true
+            exit 1
+          fi
+
+      - name: Apply K8sGPT CR to bootstrap instance
+        run: |
+          # Use the PROVIDER environment variable set earlier
+          cat <<EOF | kubectl apply -f -
+          apiVersion: core.k8sgpt.ai/v1alpha1
+          kind: K8sGPT
+          metadata:
+            name: k8sgpt-sample
+            namespace: k8sgpt-operator-system
+          spec:
+            ai:
+              enabled: true
+              model: gpt-4o
+              backend: ${PROVIDER}
+              secret:
+                name: k8sgpt-openai-secret
+          EOF
+
+      - name: Wait for k8sgpt Deployment/Service to be ready
+        run: |
+          kubectl -n k8sgpt-operator-system rollout status deployment/k8sgpt-sample --timeout=180s || true
+          for i in {1..30}; do
+            # try to find any endpoint IP for k8sgpt-sample service (works if service created)
+            EP=$(kubectl -n k8sgpt-operator-system get endpoints k8sgpt-sample -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null || true)
+            if [ -n "$EP" ]; then
+              echo "k8sgpt endpoints ready: $EP"
+              break
+            fi
+            echo "waiting for k8sgpt endpoints..."
+            sleep 5
+          done
+
+      - name: Check k8sgpt operator results (quick)
+        run: |
+          kubectl get all -n k8sgpt-operator-system || true
+          kubectl get results -n k8sgpt-operator-system -o wide || echo "no results CRs found"
+
       - name: Apply Kubernetes Deployments & Services (Azure)
         run: |
           kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.13.0/deploy/static/provider/cloud/deploy.yaml
@@ -473,8 +562,16 @@ jobs:
             sleep 5
           done
 
-          # Apply ServiceMonitor now that Service & Endpoints exist
-          kubectl apply -f k8s/k8sgpt-servicemonitor.yaml
+      - name: Apply monitoring manifests (k8sgpt)
+        run: |
+          # apply exporter + service monitors + prometheusrule (idempotent)
+          kubectl apply -f k8s/k8sgpt-results-exporter.yaml
+          kubectl apply -f k8s/k8sgpt-servicemonitors.yaml
+          # optional: alerts
+          kubectl apply -f k8s/k8sgpt-prometheusrule.yaml || true
+
+          # wait for exporter to be ready so Prometheus scrapes metrics reliably
+          kubectl -n default rollout status deployment/k8sgpt-results-exporter --timeout=120s || true
 
           echo "ingress LB:           $EXTERNAL_IP"
           echo "Grafana URL:          http://grafana.${EXTERNAL_IP}.nip.io/"

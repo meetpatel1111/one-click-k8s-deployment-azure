@@ -1,0 +1,183 @@
+# k8sgpt-results-exporter.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8sgpt-results-exporter
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8sgpt-results-exporter
+rules:
+  - apiGroups: ["core.k8sgpt.ai"]
+    resources: ["results"]
+    verbs: ["get","list","watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8sgpt-results-exporter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8sgpt-results-exporter
+subjects:
+  - kind: ServiceAccount
+    name: k8sgpt-results-exporter
+    namespace: default
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k8sgpt-results-exporter-cm
+  namespace: default
+data:
+  metrics_exporter.py: |
+    #!/usr/bin/env python3
+    from prometheus_client import start_http_server, Gauge
+    from kubernetes import client, config
+    import time, traceback
+
+    g_total = Gauge('k8sgpt_results_total', 'Total number of K8sGPT Result CRs')
+    g_with_errors = Gauge('k8sgpt_results_with_errors_total', 'Number of Result CRs that have errors')
+    g_by_ns = Gauge('k8sgpt_results_by_namespace', 'K8sGPT Results by namespace', ['namespace'])
+    g_by_kind = Gauge('k8sgpt_results_by_kind', 'K8sGPT Results by kind', ['kind'])
+
+    def list_results():
+        api = client.CustomObjectsApi()
+        try:
+            res = api.list_cluster_custom_object(group="core.k8sgpt.ai", version="v1alpha1", plural="results")
+            return res.get('items', [])
+        except Exception as e:
+            print("Error listing Result CRs:", e)
+            traceback.print_exc()
+            return []
+
+    def update_metrics():
+        items = list_results()
+        total = len(items)
+        with_errors = 0
+        by_ns = {}
+        by_kind = {}
+        for it in items:
+            ns = it.get('metadata', {}).get('namespace', 'unknown')
+            kind = it.get('spec', {}).get('kind', 'unknown')
+            if it.get('spec', {}).get('error'):
+                with_errors += 1
+            by_ns[ns] = by_ns.get(ns, 0) + 1
+            by_kind[kind] = by_kind.get(kind, 0) + 1
+
+        g_total.set(total)
+        g_with_errors.set(with_errors)
+
+        for ns, v in by_ns.items():
+            g_by_ns.labels(namespace=ns).set(v)
+        for kind, v in by_kind.items():
+            g_by_kind.labels(kind=kind).set(v)
+
+    def main():
+        try:
+            config.load_incluster_config()
+        except Exception:
+            try:
+                config.load_kube_config()
+            except Exception as e:
+                print("Could not configure kubernetes client:", e)
+                return
+        start_http_server(8000)
+        print("k8sgpt-results-exporter listening on :8000")
+        while True:
+            try:
+                update_metrics()
+            except Exception as e:
+                print("update_metrics failed:", e)
+            time.sleep(30)
+
+    if __name__ == '__main__':
+        main()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8sgpt-results-exporter
+  namespace: default
+  labels:
+    app: k8sgpt-results-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k8sgpt-results-exporter
+  template:
+    metadata:
+      labels:
+        app: k8sgpt-results-exporter
+    spec:
+      serviceAccountName: k8sgpt-results-exporter
+      containers:
+        - name: exporter
+          image: python:3.11-slim
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              pip install --no-cache-dir kubernetes prometheus_client >/dev/null 2>&1 || true
+              mkdir -p /app
+              cat /etc/config/metrics_exporter.py > /app/metrics_exporter.py
+              chmod +x /app/metrics_exporter.py
+              python /app/metrics_exporter.py
+          volumeMounts:
+            - name: config
+              mountPath: /etc/config
+          ports:
+            - containerPort: 8000
+              name: metrics
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+      volumes:
+        - name: config
+          configMap:
+            name: k8sgpt-results-exporter-cm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8sgpt-results-exporter
+  namespace: default
+  labels:
+    app: k8sgpt-results-exporter
+spec:
+  selector:
+    app: k8sgpt-results-exporter
+  ports:
+    - name: metrics
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: k8sgpt-results-exporter-sm
+  namespace: default
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: k8sgpt-results-exporter
+  namespaceSelector:
+    matchNames:
+      - default
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
