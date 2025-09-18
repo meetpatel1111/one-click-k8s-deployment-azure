@@ -66,51 +66,38 @@ data:
     # -------------------------
     # Metric definitions
     # -------------------------
-    # Aggregates
     g_total = Gauge('k8sgpt_results_total', 'Total number of K8sGPT Result CRs')
     g_with_errors = Gauge('k8sgpt_results_with_errors_total', 'Number of Result CRs that have errors')
     g_by_ns = Gauge('k8sgpt_results_by_namespace', 'K8sGPT Results by namespace', ['namespace'])
     g_by_kind = Gauge('k8sgpt_results_by_kind', 'K8sGPT Results by kind', ['kind'])
-
-    # Error breakdown
     g_errors_by_ns = Gauge('k8sgpt_results_errors_by_namespace', 'Erroneous results by namespace', ['namespace'])
     g_errors_by_kind = Gauge('k8sgpt_results_errors_by_kind', 'Erroneous results by kind', ['kind'])
 
-    # Per-result info (value = 1). result_id short hash reduces cardinality.
-    # WARNING: result_name is human readable and may increase cardinality; remove label if too many results.
     g_result_info = Gauge(
         'k8sgpt_result_info',
         'K8sGPT Result info: 1 = present',
         ['result_id', 'result_name', 'namespace', 'kind', 'status']
     )
 
-    # Per-result details
     g_error_message_len = Gauge('k8sgpt_result_error_message_length',
                                 'Length of error message text', ['result_id', 'namespace', 'kind'])
     g_result_age_seconds = Gauge('k8sgpt_result_age_seconds',
                                  'Age of Result CR in seconds', ['result_id', 'namespace'])
 
-    # Track seen label tuples to remove stale series
     _seen_result_labels = set()
     _seen_ns_labels = set()
     _seen_kind_labels = set()
 
-    # -------------------------
-    # Helpers
-    # -------------------------
     def short_id(namespace: str, name: str) -> str:
-        """Return a short stable id (sha256 first 8 hex chars) for a result"""
         s = f"{namespace}/{name}"
         h = hashlib.sha256(s.encode('utf-8')).hexdigest()
         return h[:8]
 
     def sanitize_label_value(v: str) -> str:
-        """Sanitize label value to avoid newlines and problematic chars."""
         if v is None:
             return ""
         s = str(v)
         s = s.replace("\n", " ").replace("\r", " ").strip()
-        # keep it short for safety (but not too short)
         if len(s) > 200:
             s = s[:200]
         return s
@@ -130,14 +117,10 @@ data:
             err = spec.get('error')
             if err is None:
                 return None
-            # Convert to string
             return sanitize_label_value(str(err))
         except Exception:
             return None
 
-    # -------------------------
-    # Main metric update logic
-    # -------------------------
     def update_metrics():
         global _seen_result_labels, _seen_ns_labels, _seen_kind_labels
 
@@ -162,11 +145,9 @@ data:
             kind = sanitize_label_value(spec.get('kind', 'unknown'))
             has_error = bool(spec.get('error'))
             status = "error" if has_error else "ok"
-            rid = short_id(ns, name)  # stable short id
-            # result_name kept for human readability (may increase cardinality)
+            rid = short_id(ns, name)
             result_name = name
 
-            # bookkeeping
             by_ns[ns] = by_ns.get(ns, 0) + 1
             by_kind[kind] = by_kind.get(kind, 0) + 1
             if has_error:
@@ -174,22 +155,18 @@ data:
                 err_by_ns[ns] = err_by_ns.get(ns, 0) + 1
                 err_by_kind[kind] = err_by_kind.get(kind, 0) + 1
 
-            # record seen labels
             current_result_labels.add((rid, result_name, ns, kind, status))
             current_ns_labels.add((ns,))
             current_kind_labels.add((kind,))
 
-            # per-result metrics
             try:
                 g_result_info.labels(result_id=rid, result_name=result_name, namespace=ns, kind=kind, status=status).set(1)
             except Exception:
-                # fall back: sanitize result_name further
                 try:
                     g_result_info.labels(result_id=rid, result_name=result_name[:64], namespace=ns, kind=kind, status=status).set(1)
                 except Exception:
                     pass
 
-            # error message length
             if has_error:
                 err_text = safe_get_spec_error_text(spec) or ""
                 try:
@@ -197,7 +174,6 @@ data:
                 except Exception:
                     pass
 
-            # creation timestamp -> age seconds
             cts = meta.get('creationTimestamp')
             if cts:
                 try:
@@ -210,11 +186,9 @@ data:
                 except Exception:
                     pass
 
-        # set aggregates
         g_total.set(total)
         g_with_errors.set(with_errors)
 
-        # set breakdowns
         for ns, v in by_ns.items():
             g_by_ns.labels(namespace=ns).set(v)
         for kind, v in by_kind.items():
@@ -224,18 +198,14 @@ data:
         for kind, v in err_by_kind.items():
             g_errors_by_kind.labels(kind=kind).set(v)
 
-        # remove stale per-result metrics (results deleted)
+        # remove stale per-result series
         for prev in list(_seen_result_labels):
             if prev not in current_result_labels:
                 rid, result_name, ns, kind, status = prev
-                # remove the per-result series if possible
                 try:
                     g_result_info.remove(result_id=rid, result_name=result_name, namespace=ns, kind=kind, status=status)
                 except Exception:
-                    try:
-                        g_result_info.remove(result_id=rid, result_name=result_name[:64], namespace=ns, kind=kind, status=status)
-                    except Exception:
-                        pass
+                    pass
                 try:
                     g_error_message_len.remove(result_id=rid, namespace=ns, kind=kind)
                 except Exception:
@@ -246,7 +216,6 @@ data:
                     pass
                 _seen_result_labels.discard(prev)
 
-        # remove stale ns/kind labels
         for prev_ns in list(_seen_ns_labels):
             if prev_ns not in current_ns_labels:
                 ns = prev_ns[0]
@@ -272,7 +241,6 @@ data:
                     pass
                 _seen_kind_labels.discard(prev_kind)
 
-        # persist seen sets
         for l in current_result_labels:
             _seen_result_labels.add(l)
         for l in current_ns_labels:
@@ -280,11 +248,7 @@ data:
         for l in current_kind_labels:
             _seen_kind_labels.add(l)
 
-    # -------------------------
-    # Main loop
-    # -------------------------
     def main():
-        # kube client config
         try:
             config.load_incluster_config()
         except Exception:
@@ -294,7 +258,6 @@ data:
                 print("Could not configure kubernetes client:", e)
                 return
 
-        # start HTTP server
         start_http_server(8000)
         print("k8sgpt-results-exporter listening on :8000")
         while True:
@@ -372,23 +335,3 @@ spec:
     - name: metrics
       port: 8000
       targetPort: 8000
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: k8sgpt-results-exporter-sm
-  namespace: default
-  labels:
-    release: prometheus
-spec:
-  selector:
-    matchLabels:
-      app: k8sgpt-results-exporter
-  namespaceSelector:
-    matchNames:
-      - default
-  endpoints:
-    - port: metrics
-      path: /metrics
-      interval: 30s
-      scrapeTimeout: 10s
