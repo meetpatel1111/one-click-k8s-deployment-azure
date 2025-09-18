@@ -1,4 +1,4 @@
-# k8sgpt-results-exporter.yaml (patched)
+# k8sgpt-results-exporter.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -13,7 +13,7 @@ metadata:
 rules:
   - apiGroups: ["core.k8sgpt.ai"]
     resources: ["results"]
-    verbs: ["get", "list", "watch"]
+    verbs: ["get","list","watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -36,54 +36,49 @@ metadata:
 data:
   metrics_exporter.py: |
     #!/usr/bin/env python3
-    """
-    K8sGPT Results exporter (reduced cardinality).
-    Exports:
-      - k8sgpt_results_total
-      - k8sgpt_results_with_errors_total
-      - k8sgpt_results_by_namespace{namespace}
-      - k8sgpt_results_by_kind{kind}
-      - k8sgpt_results_errors_by_namespace{namespace}
-      - k8sgpt_results_errors_by_kind{kind}
-      - k8sgpt_result_info{result_id,namespace,kind,status}
-      - k8sgpt_result_age_seconds{result_id,namespace}
-      - k8sgpt_result_error_message_length{result_id,namespace,kind}
-    """
-    import hashlib, time, traceback
-    from datetime import datetime, timezone
-    from kubernetes import client, config
+    import time, traceback, math
     from prometheus_client import start_http_server, Gauge
+    from kubernetes import client, config
 
-    # Aggregates
+    # Basic totals
     g_total = Gauge('k8sgpt_results_total', 'Total number of K8sGPT Result CRs')
     g_with_errors = Gauge('k8sgpt_results_with_errors_total', 'Number of Result CRs that have errors')
+
+    # Low-cardinality breakdowns
     g_by_ns = Gauge('k8sgpt_results_by_namespace', 'K8sGPT Results by namespace', ['namespace'])
     g_by_kind = Gauge('k8sgpt_results_by_kind', 'K8sGPT Results by kind', ['kind'])
-    g_errors_by_ns = Gauge('k8sgpt_results_errors_by_namespace', 'Erroneous results by namespace', ['namespace'])
-    g_errors_by_kind = Gauge('k8sgpt_results_errors_by_kind', 'Erroneous results by kind', ['kind'])
+    g_by_analyzer = Gauge('k8sgpt_results_by_analyzer', 'K8sGPT Results by analyzer', ['analyzer'])
+    g_by_severity = Gauge('k8sgpt_results_by_severity', 'K8sGPT Results by severity', ['severity'])
+    g_by_status = Gauge('k8sgpt_results_by_status', 'K8sGPT Results by status', ['status'])
 
-    # Per-result (reduced cardinality: no result_name)
-    g_result_info = Gauge('k8sgpt_result_info', 'Result presence (1)', ['result_id','namespace','kind','status'])
-    g_result_age_seconds = Gauge('k8sgpt_result_age_seconds', 'Age of Result CR in seconds', ['result_id','namespace'])
-    g_error_message_len = Gauge('k8sgpt_result_error_message_length', 'Length of error message text', ['result_id','namespace','kind'])
+    # Age metrics
+    g_oldest_result_age_seconds = Gauge('k8sgpt_oldest_result_age_seconds', 'Age in seconds of the oldest K8sGPT result')
+    g_newest_result_age_seconds = Gauge('k8sgpt_newest_result_age_seconds', 'Age in seconds of the newest K8sGPT result')
+    g_last_update_timestamp = Gauge('k8sgpt_last_update_timestamp', 'Unix timestamp of the most recently updated result')
 
-    _seen_result_labels = set()
-    _seen_ns_labels = set()
-    _seen_kind_labels = set()
+    # Per-namespace error ratio (computed)
+    g_ns_error_ratio = Gauge('k8sgpt_namespace_error_ratio', 'Fraction of results in namespace that have errors (0-1)', ['namespace'])
 
-    def short_id(namespace: str, name: str) -> str:
-        s = f"{namespace}/{name}".encode('utf-8')
-        return hashlib.sha256(s).hexdigest()[:8]
+    # Internal: safe label normalizer (avoid high cardinality)
+    SAFE_ANALYZER_VALUES = set()  # optional: populate with known analyzers if desired
+    SAFE_SEVERITY_VALUES = set(['low','medium','high','critical','unknown'])
+    SAFE_STATUS_VALUES = set(['ok','warning','error','unknown'])
 
-    def sanitize_label_value(v) -> str:
-        if v is None:
-            return "unknown"
-        s = str(v).replace("\n"," ").replace("\r"," ").strip()
-        if s == "":
-            return "unknown"
-        if len(s) > 200:
-            s = s[:200]
-        return s
+    def safe_label(value, allowed_set=None, default='unknown', maxlen=64):
+        if not value:
+            return default
+        v = str(value).strip().lower()
+        if len(v) > maxlen:
+            v = v[:maxlen]
+        if allowed_set:
+            if v in allowed_set:
+                return v
+            # heuristic: try to map substrings
+            for candidate in allowed_set:
+                if candidate in v:
+                    return candidate
+            return default
+        return v
 
     def list_results():
         api = client.CustomObjectsApi()
@@ -95,125 +90,185 @@ data:
             traceback.print_exc()
             return []
 
-    def safe_err_text(spec):
+    def parse_result_fields(it):
+        meta = it.get('metadata', {}) or {}
+        spec = it.get('spec', {}) or {}
+        status = it.get('status', {}) or {}
+
+        namespace = meta.get('namespace') or 'unknown'
+        kind = spec.get('kind') or 'unknown'
+
+        # Analyzer, severity, status - normalize
+        analyzer = safe_label(spec.get('analyzer') or status.get('analyzer') or 'unknown', None)
+        severity = safe_label(spec.get('severity') or status.get('severity') or 'unknown', SAFE_SEVERITY_VALUES)
+        # status field might be boolean or text
+        raw_status = spec.get('status') or status.get('state') or status.get('status') or ''
+        s = str(raw_status).strip().lower()
+        if s in SAFE_STATUS_VALUES:
+            status_label = s
+        else:
+            # map common values
+            if 'error' in s or 'fail' in s:
+                status_label = 'error'
+            elif 'warn' in s:
+                status_label = 'warning'
+            elif 'ok' in s or 'success' in s:
+                status_label = 'ok'
+            else:
+                status_label = 'unknown'
+
+        # error detection
+        has_error = bool(spec.get('error') or status.get('error') or (status_label == 'error'))
+
+        # timestamp parsing: prefer metadata.annotations/creationTimestamp/lastTransitionTime
+        # fallback to now if missing
+        ts = None
+        # try lastTransitionTime in status.conditions
         try:
-            e = spec.get('error')
-            if e is None: return ""
-            return sanitize_label_value(str(e))
+            if isinstance(status.get('conditions'), list):
+                for c in status.get('conditions'):
+                    if c.get('lastTransitionTime'):
+                        ts = c.get('lastTransitionTime')
+                        break
         except Exception:
-            return ""
+            pass
+        if not ts:
+            ts = meta.get('creationTimestamp') or status.get('lastUpdateTime') or None
+
+        # convert ts to epoch seconds safely
+        epoch = None
+        if ts:
+            try:
+                # ISO8601 parsing without extra libs
+                from datetime import datetime, timezone
+                # strip timezone Z if present
+                if ts.endswith('Z'):
+                    ts = ts
+                # attempt multiple formats
+                for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S.%f%z"):
+                    try:
+                        dt = datetime.strptime(ts, fmt)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        epoch = dt.timestamp()
+                        break
+                    except Exception:
+                        continue
+            except Exception:
+                epoch = None
+
+        return {
+            'namespace': namespace,
+            'kind': kind,
+            'analyzer': analyzer,
+            'severity': severity,
+            'status': status_label,
+            'has_error': has_error,
+            'timestamp': epoch
+        }
 
     def update_metrics():
-        global _seen_result_labels, _seen_ns_labels, _seen_kind_labels
         items = list_results()
         total = len(items)
         with_errors = 0
+
         by_ns = {}
         by_kind = {}
-        err_by_ns = {}
-        err_by_kind = {}
-        current_results = set()
-        current_ns = set()
-        current_kind = set()
+        by_analyzer = {}
+        by_severity = {}
+        by_status = {}
+
+        timestamps = []
 
         for it in items:
-            meta = it.get('metadata', {}) or {}
-            spec = it.get('spec', {}) or {}
-            ns = sanitize_label_value(meta.get('namespace','unknown'))
-            name = sanitize_label_value(meta.get('name','unknown'))
-            kind = sanitize_label_value(spec.get('kind','unknown'))
-            has_error = bool(spec.get('error'))
-            status = "error" if has_error else "ok"
-            rid = short_id(ns, name)
+            parsed = parse_result_fields(it)
+            ns = parsed['namespace']
+            kind = parsed['kind']
+            analyzer = parsed['analyzer']
+            severity = parsed['severity']
+            status = parsed['status']
+            ts = parsed['timestamp']
+            has_error = parsed['has_error']
 
-            by_ns[ns] = by_ns.get(ns,0) + 1
-            by_kind[kind] = by_kind.get(kind,0) + 1
+            by_ns[ns] = by_ns.get(ns, 0) + 1
+            by_kind[kind] = by_kind.get(kind, 0) + 1
+            by_analyzer[analyzer] = by_analyzer.get(analyzer, 0) + 1
+            by_severity[severity] = by_severity.get(severity, 0) + 1
+            by_status[status] = by_status.get(status, 0) + 1
+
             if has_error:
                 with_errors += 1
-                err_by_ns[ns] = err_by_ns.get(ns,0) + 1
-                err_by_kind[kind] = err_by_kind.get(kind,0) + 1
 
-            current_results.add((rid, ns, kind, status))
-            current_ns.add((ns,))
-            current_kind.add((kind,))
+            if ts is not None:
+                timestamps.append(ts)
 
-            try:
-                g_result_info.labels(result_id=rid, namespace=ns, kind=kind, status=status).set(1)
-            except Exception as e:
-                print("WARN g_result_info set failed:", e)
-
-            cts = meta.get('creationTimestamp')
-            if cts:
-                try:
-                    created = datetime.fromisoformat(cts.replace("Z","+00:00"))
-                    age = (datetime.now(timezone.utc) - created).total_seconds()
-                    g_result_age_seconds.labels(result_id=rid, namespace=ns).set(age)
-                except Exception:
-                    pass
-
-            if has_error:
-                et = safe_err_text(spec)
-                g_error_message_len.labels(result_id=rid, namespace=ns, kind=kind).set(len(et))
-
-        # aggregates
+        # Set base gauges
         g_total.set(total)
         g_with_errors.set(with_errors)
-        for ns,v in by_ns.items():
+
+        # reset label metrics by setting zero for known/previous labels is complicated;
+        # we set current observed values and rely on scrape time to reflect removals.
+        for ns, v in by_ns.items():
             g_by_ns.labels(namespace=ns).set(v)
-        for k,v in by_kind.items():
-            g_by_kind.labels(kind=k).set(v)
-        for ns,v in err_by_ns.items():
-            g_errors_by_ns.labels(namespace=ns).set(v)
-        for k,v in err_by_kind.items():
-            g_errors_by_kind.labels(kind=k).set(v)
+        for kind, v in by_kind.items():
+            g_by_kind.labels(kind=kind).set(v)
+        for analyzer, v in by_analyzer.items():
+            g_by_analyzer.labels(analyzer=analyzer).set(v)
+        for severity, v in by_severity.items():
+            g_by_severity.labels(severity=severity).set(v)
+        for status, v in by_status.items():
+            g_by_status.labels(status=status).set(v)
 
-        # remove stale per-result metrics
-        for prev in list(_seen_result_labels):
-            if prev not in current_results:
-                rid, ns, kind, status = prev
-                try: g_result_info.remove(result_id=rid, namespace=ns, kind=kind, status=status)
-                except Exception: pass
-                try: g_result_age_seconds.remove(result_id=rid, namespace=ns)
-                except Exception: pass
-                try: g_error_message_len.remove(result_id=rid, namespace=ns, kind=kind)
-                except Exception: pass
-                _seen_result_labels.discard(prev)
+        # per-namespace error ratios
+        for ns, count in by_ns.items():
+            # compute errors in this namespace (recompute by iterating items - small overhead)
+            ns_errors = 0
+            for it in items:
+                meta = it.get('metadata', {}) or {}
+                if (meta.get('namespace') or 'unknown') != ns:
+                    continue
+                spec = it.get('spec', {}) or {}
+                status = it.get('status', {}) or {}
+                if spec.get('error') or status.get('error') or str(spec.get('status','')).lower().find('error')>=0:
+                    ns_errors += 1
+            ratio = float(ns_errors) / float(count) if count else 0.0
+            # clip to [0,1]
+            if math.isfinite(ratio):
+                g_ns_error_ratio.labels(namespace=ns).set(max(0.0, min(1.0, ratio)))
+            else:
+                g_ns_error_ratio.labels(namespace=ns).set(0.0)
 
-        for prev in list(_seen_ns_labels):
-            if prev not in current_ns:
-                ns = prev[0]
-                try: g_by_ns.remove(namespace=ns)
-                except Exception: pass
-                try: g_errors_by_ns.remove(namespace=ns)
-                except Exception: pass
-                _seen_ns_labels.discard(prev)
-
-        for prev in list(_seen_kind_labels):
-            if prev not in current_kind:
-                kind = prev[0]
-                try: g_by_kind.remove(kind=kind)
-                except Exception: pass
-                try: g_errors_by_kind.remove(kind=kind)
-                except Exception: pass
-                _seen_kind_labels.discard(prev)
-
-        _seen_result_labels |= current_results
-        _seen_ns_labels |= current_ns
-        _seen_kind_labels |= current_kind
+        # age metrics
+        now = time.time()
+        if timestamps:
+            newest = max(timestamps)
+            oldest = min(timestamps)
+            g_newest_result_age_seconds.set(max(0, now - newest))
+            g_oldest_result_age_seconds.set(max(0, now - oldest))
+            g_last_update_timestamp.set(newest)
+        else:
+            # no timestamps - set to 0
+            g_newest_result_age_seconds.set(0)
+            g_oldest_result_age_seconds.set(0)
+            g_last_update_timestamp.set(0)
 
     def main():
         try:
             config.load_incluster_config()
         except Exception:
-            try: config.load_kube_config()
+            try:
+                config.load_kube_config()
             except Exception as e:
-                print("kube config error", e); return
+                print("Could not configure kubernetes client:", e)
+                return
         start_http_server(8000)
         print("k8sgpt-results-exporter listening on :8000")
         while True:
-            try: update_metrics()
+            try:
+                update_metrics()
             except Exception as e:
-                print("update_metrics failed:", e); traceback.print_exc()
+                print("update_metrics failed:", e)
+                traceback.print_exc()
             time.sleep(30)
 
     if __name__ == '__main__':
@@ -250,13 +305,20 @@ spec:
               mkdir -p /app
               cat /etc/config/metrics_exporter.py > /app/metrics_exporter.py
               chmod +x /app/metrics_exporter.py
-              exec python /app/metrics_exporter.py
+              python /app/metrics_exporter.py
           volumeMounts:
             - name: config
               mountPath: /etc/config
           ports:
             - containerPort: 8000
               name: metrics
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
       volumes:
         - name: config
           configMap:
@@ -276,3 +338,23 @@ spec:
     - name: metrics
       port: 8000
       targetPort: 8000
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: k8sgpt-results-exporter-sm
+  namespace: default
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: k8sgpt-results-exporter
+  namespaceSelector:
+    matchNames:
+      - default
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
